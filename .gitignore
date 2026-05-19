@@ -22,3 +22,9 @@ __pycache__/
 # Experiments and weights
 experiments/
 *.pth
+
+logs
+*.log
+
+dataset/new_extract_features
+dataset/crc_cache/*

@@ -58,7 +58,8 @@ def contrastive_loss(anchor, positive, negatives, temperature=0.07):
     negatives = F.normalize(negatives, dim=-1)
 
     pos = (anchor * positive).sum(dim=-1, keepdim=True)
-    neg = (anchor.unsqueeze(1) * negatives).sum(dim=-1)
+    # 使用矩阵乘法替代广播相乘，极大节省显存 (B, C) @ (C, N) -> (B, N)
+    neg = torch.matmul(anchor, negatives.T)
 
     logits = torch.cat([pos, neg], dim=1) / temperature
     labels = torch.zeros(anchor.size(0), dtype=torch.long, device=anchor.device)
@@ -111,6 +112,10 @@ class HeMifDataset(Dataset):
             stats = json.load(f)
             self.global_p99 = torch.tensor(stats['p99_max'], dtype=torch.float32)
 
+        # 延迟加载缓存
+        self.he_data_cache = {}
+        self.mif_data_cache = {}
+
     def __len__(self):
         return len(self.valid_pairs)
 
@@ -123,11 +128,21 @@ class HeMifDataset(Dataset):
     def __getitem__(self, idx):
         he_file, (x, y) = self.valid_pairs[idx]
 
-        he = load_pkl(os.path.join(self.he_dir, he_file))
-        mif_pos = load_pkl(self.mif_map[(x, y)])
+        # 延迟加载逻辑：第一次读取时存入内存
+        if (x, y) not in self.he_data_cache:
+            self.he_data_cache[(x, y)] = load_pkl(os.path.join(self.he_dir, he_file))
+            self.mif_data_cache[(x, y)] = load_pkl(self.mif_map[(x, y)])
+
+        he = self.he_data_cache[(x, y)]
+        mif_pos = self.mif_data_cache[(x, y)]
 
         neg_coords = self._get_farthest_negative_samples(x, y)
-        mif_neg = [load_pkl(self.mif_map[c]) for c in neg_coords]
+        
+        mif_neg = []
+        for c in neg_coords:
+            if c not in self.mif_data_cache:
+                self.mif_data_cache[c] = load_pkl(self.mif_map[c])
+            mif_neg.append(self.mif_data_cache[c])
         
         # 应用全局归一化
         mif_pos_features = mif_pos["features"][0] / self.global_p99
@@ -212,7 +227,7 @@ def main(args):
         hidden_dim=512,
         n_heads=8,
         num_layers=4,
-        output_dim=20,
+        output_dim=64,
         max_cells=255,
         use_large_vit=False
     ).to(device)
@@ -224,6 +239,12 @@ def main(args):
 
     for epoch in range(args.epochs):
         he_model.train()
+
+        # 累积 epoch 级别的 loss，用于日志和 best model 选择
+        epoch_mse_sum = [0.0] * num_tasks
+        epoch_ctr_sum = [0.0] * num_tasks
+        epoch_loss_sum = [0.0] * num_tasks
+        epoch_count = [0] * num_tasks
 
         for task_id, loader in enumerate(train_loaders):
             for batch in tqdm(loader, desc=f"Epoch {epoch+1} | Task {task_id}"):
@@ -238,10 +259,13 @@ def main(args):
                 mif_neg = [n.to(device) for n in batch["mif_neg_features"]]
                 mif_neg_mask = [n.to(device) for n in batch["mif_neg_mask"]]
 
-                _, _, cell_logits, _ = he_model(raw_images=None, x=he_feat, mask=he_mask)
+                _, reg_out, proj_out, _ = he_model(raw_images=None, x=he_feat, mask=he_mask)
 
                 he_valid = torch.cat(
-                    [cell_logits[i][he_mask[i].bool()] for i in range(he_feat.size(0))]
+                    [reg_out[i][he_mask[i].bool()] for i in range(he_feat.size(0))]
+                )
+                he_valid_proj = torch.cat(
+                    [proj_out[i][he_mask[i].bool()] for i in range(he_feat.size(0))]
                 )
                 mif_pos_valid = torch.cat(
                     [mif_pos[i][mif_pos_mask[i].bool()] for i in range(mif_pos.size(0))]
@@ -262,7 +286,7 @@ def main(args):
                 mif_neg_valid = torch.cat(mif_neg_valid_list, dim=0)
 
                 min_len = min(
-                    he_valid.size(0), mif_pos_valid.size(0), mif_neg_valid.size(0)
+                    he_valid.size(0), mif_pos_valid.size(0)
                 )
                 if min_len == 0:
                     continue
@@ -272,19 +296,32 @@ def main(args):
                 ]
                 he_valid = he_valid[:min_len]
                 mif_pos_valid = mif_pos_valid[:min_len]
-                mif_neg_valid = mif_neg_valid[:min_len]
 
                 loss_mse = hungary_mse_loss(
                     he_valid, mif_pos_valid, start_index, mif_channel
                 )
 
-                he_anchor = he_valid_slice.mean(dim=0, keepdim=True)
-                mif_pos_anchor = mif_pos_valid.mean(dim=0, keepdim=True)
+                # CTR 使用全 64 维，mIF 用 0 填充到 64
+                ctr_pad = he_model.output_dim - mif_channel
+                he_anchor = he_valid_proj[:min_len]
+                mif_pos_anchor = F.pad(mif_pos_valid, (0, ctr_pad))
+                mif_neg_ctr = F.pad(mif_neg_valid, (0, ctr_pad))
+
+                # ⭐ 采样 Anchor
+                if he_anchor.size(0) > args.max_contrast_cells:
+                    indices = torch.randperm(he_anchor.size(0), device=device)[:args.max_contrast_cells]
+                    he_anchor = he_anchor[indices]
+                    mif_pos_anchor = mif_pos_anchor[indices]
+
+                # ⭐ 采样 Negatives
+                if mif_neg_ctr.size(0) > args.max_neg_cells:
+                    indices = torch.randperm(mif_neg_ctr.size(0), device=device)[:args.max_neg_cells]
+                    mif_neg_ctr = mif_neg_ctr[indices]
 
                 loss_ctr = contrastive_loss(
                     he_anchor,
                     mif_pos_anchor,
-                    mif_neg_valid,   # [N_neg, mif_channel]
+                    mif_neg_ctr,
                 )
 
                 loss = args.lambda_mse * loss_mse + args.lambda_contrast * loss_ctr
@@ -296,13 +333,72 @@ def main(args):
                 writer.add_scalar(f"task_{task_id}/mse", loss_mse.item(), global_step)
                 writer.add_scalar(f"task_{task_id}/ctr", loss_ctr.item(), global_step)
                 global_step += 1
-                torch.save(he_model.state_dict(), os.path.join(exp_dir, "he_model_recent.pth"))
 
-        logger.info(f"Epoch {epoch+1} finished: MSE={loss_mse.item():.4f}, Contrastive={loss_ctr.item():.4f}")
-        if loss.item() < best_loss:
-            print("New best model found! Saving...")
-            best_loss = loss.item()    
+                # 累积 epoch 统计
+                epoch_mse_sum[task_id] += loss_mse.item()
+                epoch_ctr_sum[task_id] += loss_ctr.item()
+                epoch_loss_sum[task_id] += loss.item()
+                epoch_count[task_id] += 1
+
+        # ---- epoch 结束：验证 + 日志 + checkpoint ----
+        # 验证集评估
+        val_avg_loss = 0.0
+        val_count = 0
+        he_model.eval()
+        with torch.no_grad():
+            for task_id, loader in enumerate(test_loaders):
+                for batch in loader:
+                    start_index = batch["start_index"][0]
+                    mif_channel = batch["mif_channel"][0]
+
+                    he_feat = batch["he_features"].to(device)
+                    he_mask = batch["he_mask"].to(device)
+                    mif_pos = batch["mif_pos_features"].to(device)
+                    mif_pos_mask = batch["mif_pos_mask"].to(device)
+
+                    _, reg_out, _, _ = he_model(raw_images=None, x=he_feat, mask=he_mask)
+
+                    he_valid = torch.cat(
+                        [reg_out[i][he_mask[i].bool()] for i in range(he_feat.size(0))]
+                    )
+                    mif_pos_valid = torch.cat(
+                        [mif_pos[i][mif_pos_mask[i].bool()] for i in range(mif_pos.size(0))]
+                    )
+                    min_len = min(he_valid.size(0), mif_pos_valid.size(0))
+                    if min_len == 0:
+                        continue
+                    he_valid = he_valid[:min_len]
+                    mif_pos_valid = mif_pos_valid[:min_len]
+
+                    val_mse = hungary_mse_loss(
+                        he_valid, mif_pos_valid, start_index, mif_channel
+                    )
+                    val_avg_loss += val_mse.item()
+                    val_count += 1
+
+        val_avg_loss = val_avg_loss / val_count if val_count > 0 else float("inf")
+
+        # 训练日志（每 task 一个平均值）
+        log_parts = []
+        for t in range(num_tasks):
+            if epoch_count[t] > 0:
+                avg_mse = epoch_mse_sum[t] / epoch_count[t]
+                avg_ctr = epoch_ctr_sum[t] / epoch_count[t]
+                avg_loss = epoch_loss_sum[t] / epoch_count[t]
+                log_parts.append(
+                    f"Task{t} MSE={avg_mse:.4f} CTR={avg_ctr:.4f} Loss={avg_loss:.4f}"
+                )
+        logger.info(f"Epoch {epoch+1} | {' | '.join(log_parts)} | ValMSE={val_avg_loss:.4f}")
+
+        # 保存 recent 模型
+        torch.save(he_model.state_dict(), os.path.join(exp_dir, "he_model_recent.pth"))
+
+        # 基于验证集 loss 选择 best model
+        if val_avg_loss < best_loss:
+            best_loss = val_avg_loss
+            logger.info(f"New best model (ValMSE={best_loss:.4f}), saving...")
             torch.save(he_model.state_dict(), os.path.join(exp_dir, "he_model_best.pth"))
+
     writer.close()
     logger.info("Training done")
 
@@ -326,6 +422,8 @@ if __name__ == "__main__":
     parser.add_argument("--lambda_mse", type=float, default=1.0)
     parser.add_argument("--lambda_contrast", type=float, default=1.0)
     parser.add_argument("--num_neg_samples", type=int, default=10)
+    parser.add_argument("--max_contrast_cells", type=int, default=512, help="每个 step 参与对比学习的 anchor 细胞上限")
+    parser.add_argument("--max_neg_cells", type=int, default=2048, help="每个 step 参与对比学习的负样本细胞上限")
 
     args = parser.parse_args()
     main(args)

@@ -71,7 +71,14 @@ class XCellFormer(nn.Module):
         )
         self.pre_norm = nn.LayerNorm(self.adjusted_output_dim)
         self.post_norm = nn.LayerNorm(self.adjusted_output_dim)
-        self.final_output = nn.Linear(self.adjusted_output_dim, output_dim)
+        # 双头设计：regression 和 projection 分离
+        self.regression_head = nn.Linear(self.adjusted_output_dim, output_dim)
+        self.projection_head = nn.Sequential(
+            nn.Linear(self.adjusted_output_dim, self.adjusted_output_dim),
+            nn.LayerNorm(self.adjusted_output_dim),
+            nn.ReLU(),
+            nn.Linear(self.adjusted_output_dim, output_dim),
+        )
 
         # --- Large ViT Branch (全局级 - 使用 Transformers) ---
         if use_large_vit:
@@ -176,8 +183,9 @@ class XCellFormer(nn.Module):
         attn_out = attn_out + cell_q 
         attn_out = self.post_norm(attn_out)
         
-        # J. Output Projection
+        # J. 双头输出
         attn_out = attn_out.permute(1, 0, 2).contiguous()
-        x_out = torch.sigmoid(self.final_output(attn_out)) # [B, N_cell, 7]
+        reg_out = self.regression_head(attn_out)   # [B, N_cell, output_dim] → MSE
+        proj_out = self.projection_head(attn_out)  # [B, N_cell, output_dim] → Contrastive
 
-        return cls_out, x_out, x_out, attn_out
+        return cls_out, reg_out, proj_out, attn_out
