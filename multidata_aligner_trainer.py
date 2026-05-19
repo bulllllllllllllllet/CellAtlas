@@ -10,7 +10,7 @@ from datetime import datetime
 
 import torch
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader, random_split, Subset
 from torch.optim import AdamW
 from torch.utils.tensorboard import SummaryWriter
 from XCellFormer import XCellFormer
@@ -201,26 +201,41 @@ def main(args):
             num_neg_samples=args.num_neg_samples,
         )
 
-        train_size = int(0.9 * len(dataset))
-        test_size = len(dataset) - train_size
-        train_set, test_set = random_split(dataset, [train_size, test_size])
+        if len(args.holdout_slide) > 0:
+            if t in args.holdout_slide:
+                train_set = Subset(dataset, [])
+                test_set = dataset
+            else:
+                train_set = dataset
+                test_set = Subset(dataset, [])
+        else:
+            train_size = int(0.9 * len(dataset))
+            test_size = len(dataset) - train_size
+            train_set, test_set = random_split(dataset, [train_size, test_size])
 
-        train_loaders.append(
-            DataLoader(
-                train_set,
-                batch_size=args.batch_size,
-                shuffle=True,
-                num_workers=args.num_workers,
+        if len(train_set) > 0:
+            train_loaders.append(
+                DataLoader(
+                    train_set,
+                    batch_size=args.batch_size,
+                    shuffle=True,
+                    num_workers=args.num_workers,
+                )
             )
-        )
-        test_loaders.append(
-            DataLoader(
-                test_set,
-                batch_size=args.batch_size,
-                shuffle=False,
-                num_workers=args.num_workers,
+        else:
+            train_loaders.append(None)
+
+        if len(test_set) > 0:
+            test_loaders.append(
+                DataLoader(
+                    test_set,
+                    batch_size=args.batch_size,
+                    shuffle=False,
+                    num_workers=args.num_workers,
+                )
             )
-        )
+        else:
+            test_loaders.append(None)
 
     he_model = XCellFormer(
         input_dim=768,
@@ -247,6 +262,8 @@ def main(args):
         epoch_count = [0] * num_tasks
 
         for task_id, loader in enumerate(train_loaders):
+            if loader is None:
+                continue
             for batch in tqdm(loader, desc=f"Epoch {epoch+1} | Task {task_id}"):
                 start_index = batch["start_index"][0]
                 mif_channel = batch["mif_channel"][0]
@@ -347,6 +364,8 @@ def main(args):
         he_model.eval()
         with torch.no_grad():
             for task_id, loader in enumerate(test_loaders):
+                if loader is None:
+                    continue
                 for batch in loader:
                     start_index = batch["start_index"][0]
                     mif_channel = batch["mif_channel"][0]
@@ -424,6 +443,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_neg_samples", type=int, default=10)
     parser.add_argument("--max_contrast_cells", type=int, default=512, help="每个 step 参与对比学习的 anchor 细胞上限")
     parser.add_argument("--max_neg_cells", type=int, default=2048, help="每个 step 参与对比学习的负样本细胞上限")
+    parser.add_argument("--holdout_slide", nargs="+", type=int, default=[], help="指定作为 holdout 的 task_id，不参与训练只做验证")
 
     args = parser.parse_args()
     main(args)
