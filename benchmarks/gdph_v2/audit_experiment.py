@@ -19,6 +19,11 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
 def _json(path: Path) -> dict[str, Any] | list[Any] | None:
     if not path.exists():
         return None
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except (OSError, json.JSONDecodeError):
+        return None
 
 
 def _fullres_valid(item: Any) -> bool:
@@ -39,11 +44,6 @@ def _label_valid(item: Any) -> bool:
         and item.get("indices_equal") is True
         and item.get("purity_definition") == "majority_class_pixels / all_polygon_pixels"
     )
-    try:
-        with open(path, "r", encoding="utf-8") as file:
-            return json.load(file)
-    except (OSError, json.JSONDecodeError):
-        return None
 
 
 def audit_experiment(root: str | Path) -> dict[str, Any]:
