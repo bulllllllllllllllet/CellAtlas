@@ -4,7 +4,9 @@ import argparse
 import csv
 import hashlib
 import json
+import os
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
@@ -65,9 +67,6 @@ def generate_slide_queries(
         candidate_indices = np.flatnonzero(valid & (tissue == class_id))
         if candidate_indices.size == 0:
             continue
-        candidate_indices = candidate_indices[
-            np.argsort(np.asarray([cells[index]["cell_index"] for index in candidate_indices], dtype=int))
-        ]
         for size in box_sizes:
             accepted_centers: list[tuple[float, float]] = []
             for index in candidate_indices:
@@ -194,6 +193,28 @@ def generate_slide_queries(
     return results
 
 
+def _generate_slide_queries_job(
+    row: dict[str, str],
+    output_root: str,
+    box_sizes: list[int],
+    per_class_size: int,
+    min_purity: float,
+    min_gt_valid_fraction: float,
+    min_cells: int,
+) -> tuple[str, list[dict]]:
+    image_id = row["image_id"]
+    queries = generate_slide_queries(
+        image_id,
+        Path(output_root),
+        box_sizes,
+        per_class_size,
+        min_purity,
+        min_gt_valid_fraction,
+        min_cells,
+    )
+    return image_id, queries
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate pure automatic GDPH region queries.")
     parser.add_argument(
@@ -205,23 +226,60 @@ def main() -> None:
     parser.add_argument("--min_purity", type=float, default=0.8)
     parser.add_argument("--min_gt_valid_fraction", type=float, default=0.8)
     parser.add_argument("--min_cells", type=int, default=5)
+    parser.add_argument("--workers", type=int, default=min(8, os.cpu_count() or 1))
     args = parser.parse_args()
     if not (0 <= args.min_purity <= 1 and 0 <= args.min_gt_valid_fraction <= 1):
         raise ValueError("purity and GT valid fraction thresholds must be in [0, 1]")
+    if args.workers <= 0:
+        raise ValueError("workers must be positive")
     rows = _read_csv(args.manifest)
-    queries = []
-    for row in rows:
-        queries.extend(
-            generate_slide_queries(
-                row["image_id"],
-                Path(args.output_root),
+    workers = min(args.workers, len(rows))
+    queries_by_image: dict[str, list[dict]] = {}
+    if workers == 1:
+        for index, row in enumerate(rows, start=1):
+            image_id, slide_queries = _generate_slide_queries_job(
+                row,
+                args.output_root,
                 args.box_sizes,
                 args.queries_per_class_size,
                 args.min_purity,
                 args.min_gt_valid_fraction,
                 args.min_cells,
             )
-        )
+            queries_by_image[image_id] = slide_queries
+            print(
+                f"query_slide {index}/{len(rows)} {image_id} queries={len(slide_queries)}",
+                flush=True,
+            )
+    else:
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            future_to_row = {
+                executor.submit(
+                    _generate_slide_queries_job,
+                    row,
+                    args.output_root,
+                    args.box_sizes,
+                    args.queries_per_class_size,
+                    args.min_purity,
+                    args.min_gt_valid_fraction,
+                    args.min_cells,
+                ): row
+                for row in rows
+            }
+            completed = 0
+            for future in as_completed(future_to_row):
+                row = future_to_row[future]
+                image_id, slide_queries = future.result()
+                queries_by_image[image_id] = slide_queries
+                completed += 1
+                print(
+                    f"query_slide {completed}/{len(rows)} {image_id} "
+                    f"queries={len(slide_queries)}",
+                    flush=True,
+                )
+    queries = []
+    for row in rows:
+        queries.extend(queries_by_image[row["image_id"]])
     output_path = Path(args.output_root) / "region_retrieval" / "queries.csv"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if not queries:

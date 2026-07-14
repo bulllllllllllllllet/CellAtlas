@@ -49,3 +49,28 @@ Do not start a long GPU stage unless `gpu_preflight.json` has `passed: true`.
 The raw, regression, projection, cell metadata, and polygon counts must be
 strictly equal. No evaluator silently truncates mismatched arrays.
 
+## PRET-style superpixel in-context benchmark
+
+This optional stage evaluates prompt-driven tissue retrieval/segmentation on
+10x HE superpixels. Superpixels are generated from HE only; GT is used only for
+prompt simulation and metrics.
+
+```bash
+conda run -n aligner python -m benchmarks.gdph_v2.pret_superpixel_tokens \
+  --manifest /nfs-medical3/zyh/cellatlas_gdph_benchmark_v2/manifests/main_20.csv \
+  --output_root /nfs-medical3/zyh/cellatlas_gdph_benchmark_v2 \
+  --workers 8
+
+conda run -n aligner python -m benchmarks.gdph_v2.pret_generate_prompts \
+  --output_root /nfs-medical3/zyh/cellatlas_gdph_benchmark_v2
+
+conda run -n aligner python -m benchmarks.gdph_v2.pret_eval_in_context \
+  --output_root /nfs-medical3/zyh/cellatlas_gdph_benchmark_v2 \
+  --workers 8
+
+conda run -n aligner python -m benchmarks.gdph_v2.pret_visualize \
+  --output_root /nfs-medical3/zyh/cellatlas_gdph_benchmark_v2
+```
+
+Outputs are written under `pret_superpixel/`. Keep `oracle_gt_purity`,
+`realistic_box`, and `scribble_like` prompt summaries separate in reports.

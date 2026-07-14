@@ -14,6 +14,14 @@ import scipy.ndimage as ndimage
 from utils import load_cellpose_model
 from module.TransPath.ctran import ctranspath
 
+"""
+初始 WSI cache 构建脚本。
+
+这个流式抽取脚本用于生成 patch 级 HE/mIF cache 和 Cellpose mask。
+在当前训练特征定义下，训练前还需要再运行 re_extract_crc02.py，用
+以细胞 centroid 为中心的裁剪和 soft attention 重建 HE 细胞特征。
+"""
+
 # =========================
 # 配置与日志
 # =========================

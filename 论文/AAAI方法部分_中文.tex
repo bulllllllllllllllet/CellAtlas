@@ -1,0 +1,211 @@
+\documentclass[UTF8]{ctexart}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{a4paper, margin=2.2cm}
+\emergencystretch=2em
+
+\title{AAAI论文方法部分草稿：多尺度Prompt感知Superpixel组织分割}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{方法}
+
+\subsection{问题定义}
+
+给定一张HE染色全视野病理切片或其10$\times$尺度图像，记其图像域为
+$\Omega \subset \mathbb{R}^{2}$。用户交互由一组正向提示与负向提示组成：
+\begin{equation}
+    \mathcal{P}^{+}=\{p_i^{+}\}_{i=1}^{N_{+}}, \qquad
+    \mathcal{P}^{-}=\{p_j^{-}\}_{j=1}^{N_{-}},
+\end{equation}
+其中每个提示可以是矩形框、局部区域或由提示区域映射得到的superpixel集合。对于目标组织类别
+$c$，本文将交互式组织分割建模为一次target-vs-rest二分类任务：
+\begin{equation}
+    f_{\theta}(I,\mathcal{P}^{+},\mathcal{P}^{-},c) \rightarrow M_c,
+\end{equation}
+其中$I$为HE图像，$M_c \in [0,1]^{|\Omega|}$为目标类别$c$的概率掩膜。不同query之间的目标掩膜允许重叠，因为病理组织类别的交互式查询是以用户意图为中心定义的，而不是以一次全局互斥语义分割为中心定义的。
+
+现有PRET-superpixel流程已经能够将HE图像转换为区域级token并进行prompt retrieval，但其最终分割结果仍依赖固定尺度、手工阈值和经验式score-to-mask转换。为此，本文提出一个多尺度prompt感知superpixel组织分割框架，记为CellAtlas-MPS。该框架保留PRET-superpixel中稳定的区域表示和prompt retrieval主干，同时引入三个可学习或可校准模块：Prompt Scale Selector、Prompt-conditioned Mask Decoder和Graph Refiner，从而将尺度选择、阈值校准和区域级掩膜生成统一到一个可验证的学习框架中。
+
+\subsection{总体框架}
+
+CellAtlas-MPS由五个阶段组成。首先，HE图像被划分为small、medium和large三种尺度的superpixel，并为每个superpixel构建区域token。其次，用户给定的正负prompt被映射到对应尺度的superpixel集合，并形成一次prompt-task。第三，在每个尺度上执行prompt retrieval，得到每个superpixel相对于目标prompt的正向分数、负向分数和综合分数。第四，Prompt Scale Selector根据prompt几何、prompt纯度和各尺度score分布自动选择合适尺度。最后，Prompt-conditioned Mask Decoder或Graph Refiner将区域token、prompt score和邻接上下文转换为superpixel级目标概率，并投影回像素空间生成最终掩膜。
+
+整体流程可表示为：
+\begin{equation}
+    I \rightarrow \{\mathcal{G}^{s}\}_{s \in \mathcal{S}}
+    \rightarrow \{Z^{s}, A^{s}\}_{s \in \mathcal{S}}
+    \rightarrow \{R^{s}(q)\}_{s \in \mathcal{S}}
+    \rightarrow \hat{s}
+    \rightarrow \hat{M}_{q},
+\end{equation}
+其中$\mathcal{S}=\{\text{small},\text{medium},\text{large}\}$表示尺度集合，$\mathcal{G}^{s}$表示尺度$s$下的superpixel图，$Z^{s}$表示region token矩阵，$A^{s}$表示superpixel邻接边，$R^{s}(q)$表示query $q$在尺度$s$下的retrieval响应，$\hat{s}$表示选择的尺度，$\hat{M}_{q}$表示最终预测掩膜。
+
+\subsection{数据组织与Prompt-task构建}
+
+本文使用统一manifest组织每张WSI的HE路径、10$\times$组织标注、细胞核类别图、细胞核实例图、细胞特征、细胞坐标、多边形文件、已有superpixel结果以及prompt文件。当前v3数据清单包含20张HE切片；每张切片均具有HE图像、GT组织掩膜、细胞特征、细胞坐标、已有medium尺度superpixel及对应token。已有高纯度prompt文件包含1161条prompt记录，覆盖20张切片，prompt来源为基于GT纯度筛选的区域框。
+
+每个训练或评估样本被定义为一次prompt分割任务：
+\begin{equation}
+    q=(\text{image\_id}, c, \mathcal{P}^{+}, \mathcal{P}^{-}),
+\end{equation}
+其中$c$为目标组织类别。对于prompt区域$B$，其纯度定义为该区域内目标类别像素占有效组织像素的比例：
+\begin{equation}
+    \rho(B,c)=
+    \frac{\sum_{x\in B}\mathbb{I}[Y(x)=c]}
+    {\sum_{x\in B}\mathbb{I}[Y(x)\neq \text{background}] + \epsilon}.
+\end{equation}
+在已有expert prompt之外，我们进一步设计自动prompt-task生成策略，包括clean positive、noisy positive和hard negative三类样本。clean positive要求$\rho(B,c)\geq0.8$；noisy positive覆盖$0.5\leq\rho(B,c)<0.8$的真实交互噪声；hard negative不从随机背景中采样，而优先选择与目标类别在区域token空间中相似、但GT类别不同的区域，以模拟肿瘤上皮与正常腺体、坏死与黏液、肌层与浆膜下组织等易混淆情况。
+
+\subsection{多尺度Superpixel与Region Token}
+
+为适应不同大小的用户提示和组织结构，本文为每张图像构建三种尺度的superpixel：
+\begin{equation}
+    d_{\text{small}}=0.5d_{0}, \quad
+    d_{\text{medium}}=d_{0}, \quad
+    d_{\text{large}}=2d_{0},
+\end{equation}
+其中$d_{0}$为当前full10x auto-physical流程确定的基础区域直径。medium尺度直接复用已有PRET-superpixel结果，以保持与当前稳定主线一致；small尺度通过对medium区域进行局部细分获得更细粒度边界；large尺度通过对相邻medium区域进行空间聚合获得更大语义区域。对于需要独立验证尺度效应的实验，large或全部尺度也可以由SLIC重新生成。
+
+对每个图像$image\_id$和尺度$s$，标准输出包括：
+\begin{equation}
+    \{\texttt{he\_10x\_rgb}, \texttt{superpixels}, \texttt{superpixels.csv},
+    A^{s}, Z_{\text{base}}^{s}, Z_{\text{enh}}^{s}, \texttt{gt\_label\_stats}\}.
+\end{equation}
+其中$A^{s}\in\mathbb{N}^{E_s\times2}$为无向邻接边列表，而不是稠密邻接矩阵。每个superpixel记录面积、中心点、边界框、细胞数量、细胞密度、GT majority label、目标类别比例、GT纯度和有效组织比例。基础token $Z_{\text{base}}^{s}$使用\texttt{image\_cell\_reg\_cellw0p5}，当前维度为274；增强token $Z_{\text{enh}}^{s}$在基础token上加入纹理和细胞统计特征，当前维度为309，并作为特征消融项。
+
+对于一个superpixel $v_k^s$，其基础表示写为：
+\begin{equation}
+    z_k^s =
+    \operatorname{Norm}
+    \left(
+    [\phi_{\text{img}}(v_k^s),\;
+    \phi_{\text{cell}}(v_k^s),\;
+    \phi_{\text{reg}}(v_k^s)]
+    \right),
+\end{equation}
+其中$\phi_{\text{img}}$表示图像区域特征，$\phi_{\text{cell}}$表示区域内细胞特征聚合，$\phi_{\text{reg}}$表示配准后的细胞表达或形态相关特征，$\operatorname{Norm}(\cdot)$表示向量归一化。增强表示进一步拼接纹理统计和细胞统计：
+\begin{equation}
+    \tilde{z}_k^s =
+    \operatorname{Norm}
+    \left(
+    [z_k^s,\phi_{\text{tex}}(v_k^s),\phi_{\text{stat}}(v_k^s)]
+    \right).
+\end{equation}
+
+\subsection{Prompt Retrieval Baseline}
+
+在每个尺度$s$下，prompt区域首先被映射为superpixel集合。令$Q^{+,s}$和$Q^{-,s}$分别表示正向和负向prompt对应的token集合。对于任意候选superpixel token $z_k^s$，其正向相似度和负向相似度定义为：
+\begin{equation}
+    r_{k,+}^{s}=\max_{u\in Q^{+,s}}\cos(z_k^s,u),
+    \qquad
+    r_{k,-}^{s}=\max_{u\in Q^{-,s}}\cos(z_k^s,u).
+\end{equation}
+综合retrieval分数为：
+\begin{equation}
+    r_k^{s}=
+    \begin{cases}
+    r_{k,+}^{s}-\lambda r_{k,-}^{s}, & |\mathcal{P}^{-}|>0,\\
+    r_{k,+}^{s}, & |\mathcal{P}^{-}|=0,
+    \end{cases}
+\end{equation}
+其中$\lambda$为负向prompt权重，默认设置为0.5。该baseline保留了当前PRET-superpixel的可解释性：高分区域表示与正向prompt相似，同时被负向prompt抑制。每个query-scale结果保存segment id、正向分数、负向分数、综合分数、rank percentile、superpixel级GT soft label、hard label、面积和中心坐标，用于后续尺度选择与mask decoder训练。
+
+\subsection{Prompt Scale Selector}
+
+固定使用medium尺度无法同时满足小范围精细prompt和大范围语义prompt。本文设计Prompt Scale Selector，将尺度选择建模为三分类问题：
+\begin{equation}
+    g_{\psi}(h_q) \rightarrow \hat{s}\in\{\text{small},\text{medium},\text{large}\},
+\end{equation}
+其中$h_q$为query级特征。该特征包含prompt面积、prompt框宽高、长宽比、prompt纯度、各尺度覆盖到的prompt token数量，以及各尺度retrieval score的统计量，例如标准差和正负score gap。训练标签由三尺度baseline结果自动产生：
+\begin{equation}
+    s^{*}=\arg\max_{s\in\mathcal{S}} \operatorname{Dice}_{\text{select}}^{s}(q),
+\end{equation}
+其中$\operatorname{Dice}_{\text{select}}$可以取BestDice、classwise top-area Dice或prompt-adaptive Dice。第一版实现优先采用Random Forest、Gradient Boosting或轻量MLP，而不是直接引入大型Transformer，以降低小样本WSI设置下的过拟合风险。
+
+尺度选择模型采用WSI-level划分。对于20张切片，使用5-fold by image\_id协议，使同一张WSI上的prompt不会同时出现在训练集和测试集。每个fold中，训练、验证和测试图像按16/2/2划分。报告指标包括scale accuracy、macro F1、chosen-scale Dice、oracle-scale Dice以及small-only、medium-only、large-only和manual prompt-size rule的对照结果。
+
+\subsection{Prompt-conditioned Mask Decoder}
+
+Prompt retrieval给出了区域排序，但仍需要将score转换为可用于分割的概率。为替代手工阈值，本文引入Prompt-conditioned Mask Decoder，对每个query-scale-superpixel输出目标概率：
+\begin{equation}
+    p_k^s = \sigma\left(d_{\omega}(x_k^s;q)\right),
+\end{equation}
+其中$\sigma(\cdot)$为Sigmoid函数，$d_{\omega}$为MLP decoder，$x_k^s$为融合prompt响应、区域表示和几何上下文的节点特征：
+\begin{equation}
+    x_k^s=[
+    z_k^s,\;
+    r_{k,+}^{s}, r_{k,-}^{s}, r_k^s,\;
+    \operatorname{rank}(r_k^s),\;
+    a_k,\bar{x}_k,\bar{y}_k,\;
+    n_k,\delta_k,\;
+    d_k^{+}, d_k^{-},\;
+    \mu_{\mathcal{N}(k)}(r),\max_{\mathcal{N}(k)}(r),\sigma_{\mathcal{N}(k)}(r)
+    ],
+\end{equation}
+其中$a_k$为区域面积，$(\bar{x}_k,\bar{y}_k)$为空间归一化中心坐标，$n_k$为细胞数量，$\delta_k$为细胞密度，$d_k^{+}$和$d_k^{-}$分别为到正向和负向prompt的距离，$\mathcal{N}(k)$为邻接superpixel集合。监督标签使用superpixel内目标类别像素比例：
+\begin{equation}
+    y_k^s =
+    \frac{\sum_{x\in v_k^s}\mathbb{I}[Y(x)=c]}
+    {\sum_{x\in v_k^s}\mathbb{I}[Y(x)\neq \text{background}] + \epsilon},
+    \qquad
+    \bar{y}_k^s=\mathbb{I}[y_k^s>0.5].
+\end{equation}
+
+decoder训练使用BCE与Soft Dice的组合损失：
+\begin{equation}
+    \mathcal{L}_{\text{dec}}=
+    \operatorname{BCEWithLogits}(o,y;\alpha)
+    +\lambda_{\text{dice}}\left(
+    1-\frac{2\sum_k p_k y_k+\epsilon}{\sum_k p_k+\sum_k y_k+\epsilon}
+    \right),
+\end{equation}
+其中$o$为logit，$\alpha$为类别不平衡时的正样本权重，$\lambda_{\text{dice}}$默认设置为1.0。
+
+\subsection{Graph Refiner}
+
+病理组织区域具有空间连续性，单独对每个superpixel做MLP预测容易产生孤立假阳性或局部断裂。本文进一步将superpixel视为图节点，将邻接关系$A^s$视为边，构建Graph Refiner：
+\begin{equation}
+    \mathcal{H}^{(0)} = X^s, \qquad
+    \mathcal{H}^{(\ell+1)}
+    =
+    \operatorname{GraphSAGE}_{\ell}
+    \left(\mathcal{H}^{(\ell)}, A^s\right),
+\end{equation}
+\begin{equation}
+    p_k^s = \sigma\left(W_o h_k^{(L)}+b_o\right).
+\end{equation}
+GraphSAGE被优先采用，因为它在区域图上具有较好的稳定性，并且不需要构造稠密邻接矩阵。Graph Refiner与MLP decoder使用相同的prompt-conditioned节点特征和监督标签，但通过邻域聚合显式引入局部上下文，使模型能够在保留prompt响应的同时平滑组织边界并抑制空间上不一致的预测。
+
+\subsection{多尺度融合}
+
+尺度选择给出一个单尺度决策，而多尺度融合进一步利用三个尺度的互补性。本文比较五类策略：medium-only baseline、manual prompt-size rule、learned scale selector、score-level fusion和oracle best scale。其中oracle只作为上限，不参与实际部署。score-level fusion将三个尺度的概率图投影到同一10$\times$空间后加权融合：
+\begin{equation}
+    P(x)=
+    w_{\text{small}}P_{\text{small}}(x)
+    +w_{\text{medium}}P_{\text{medium}}(x)
+    +w_{\text{large}}P_{\text{large}}(x),
+    \qquad
+    \sum_{s\in\mathcal{S}}w_s=1.
+\end{equation}
+权重$w_s$可以由scale selector的类别概率给出，也可以由轻量MLP根据query特征预测。作为无训练对照，max fusion定义为：
+\begin{equation}
+    P(x)=\max_{s\in\mathcal{S}} P_s(x).
+\end{equation}
+
+\subsection{训练与评估协议}
+
+所有可学习模块均采用WSI-level 5-fold评估，避免同一切片内高度相关的prompt造成数据泄漏。训练集由自动prompt-task和训练WSI中的expert prompt共同构成；测试时分别报告automatic prompt setting和expert prompt setting。主要指标包括Dice、mIoU、Boundary F1、Precision、Recall、PredArea和GTArea。对于retrieval baseline，额外报告mAP、AUROC、P@top5、P@top10、不同阈值策略下的Dice以及BestDice。对于尺度选择模块，额外报告scale accuracy、macro F1和chosen-scale Dice。
+
+消融实验围绕三个问题设计。第一，特征消融比较image only、cell only、image+cell以及image+cell+texture/cellstats，验证细胞级信息和纹理统计是否提升组织分割。第二，prompt消融比较1 positive、1 positive+1 negative、1 positive+3 negative、expert prompt、automatic prompt、clean prompt和noisy prompt，分析交互质量对结果的影响。第三，多尺度和模型消融比较small-only、medium-only、large-only、manual scale rule、learned scale selector、MLP decoder、GraphSAGE refiner和multi-scale fusion，验证本文各模块对最终分割性能的贡献。
+
+\subsection{实现与验证细节}
+
+当前实现将v3数据产品统一保存到\path{/nfs-medical3/zyh/v3/cellatlas_pret_superpixel_aaai_v3_multiscale_refiner}。输入manifest已验证20张图像的HE、GT、细胞特征、细胞坐标、已有superpixel、基础token、增强token和prompt路径均存在。多尺度token构建阶段已在hierarchical模式下完成4张图像的三尺度验证，共12个image-scale输出；small、medium和large的segment数量分别处于2792--4591、888--1459和345--434范围内，基础token维度为274，增强token维度为309。针对少数GT非背景区域未被superpixel覆盖的问题，额外设计覆盖修复步骤：仅对$Y\neq\text{background}$且\texttt{superpixels=-1}的区域按尺度相关网格补充segment，并将新增segment token设为最近已有segment的token，从而避免将玻片空白强制纳入组织区域。
+
+\end{document}

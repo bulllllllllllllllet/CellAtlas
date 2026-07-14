@@ -1,6 +1,11 @@
 """
-以 cell centroid 为中心裁区域，soft attention 强调目标细胞但保留上下文。
-对比旧版：硬清零黑背景 → 上下文保留 + 目标细胞突出
+当前训练使用的 HE cache 重抽取路径。
+
+这个脚本基于已有 cache 中的 Cellpose mask，以每个细胞 centroid 为中心
+裁剪区域，使用和全分辨率推理一致的基于 mask 的 soft attention，
+再送入 CTransPath 重建 HE 细胞特征。旧的流式抽取脚本仍用于生成
+初始 patch cache 和 Cellpose mask；当前 soft attention 特征
+定义下，训练时应指向本脚本重抽取后的输出目录。
 """
 import os, sys, re, pickle, argparse, numpy as np
 from PIL import Image
@@ -285,6 +290,11 @@ def main():
     if os.path.exists(stats_src):
         import shutil
         shutil.copy2(stats_src, os.path.join(args.output_dir, "global_norm_stats.json"))
+        if args.mif_path:
+            print(
+                "       提醒：mIF 已重新抽取；训练前请在输出 cache 上重新运行 "
+                "compute_global_norm_stats.py。"
+            )
 
     if not args.mif_path:
         print("[5/5] Syncing mIF (fallback copy)...")

@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
@@ -159,6 +161,32 @@ def evaluate_query(
     }
 
 
+def _evaluate_slide_queries_job(
+    output_root: str,
+    image_id: str,
+    image_queries: list[dict[str, str]],
+    head: str,
+    buffer_pixels: int,
+    query_similarity_quantile: float,
+) -> tuple[str, str, list[dict], list[dict]]:
+    slide_data = load_retrieval_slide(Path(output_root), image_id, head)
+    valid_results = []
+    invalid_results = []
+    for query in image_queries:
+        result = evaluate_query(
+            query,
+            slide_data,
+            head,
+            buffer_pixels,
+            query_similarity_quantile,
+        )
+        if result["valid"]:
+            valid_results.append(result)
+        else:
+            invalid_results.append({"head": head, "query_id": query["query_id"], **result})
+    return head, image_id, valid_results, invalid_results
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate query-by-region GDPH cell retrieval.")
     parser.add_argument(
@@ -168,11 +196,14 @@ def main() -> None:
     parser.add_argument("--heads", nargs="+", choices=["raw", "reg", "proj"], default=["raw", "reg", "proj"])
     parser.add_argument("--buffer_pixels", type=int, default=256)
     parser.add_argument("--query_similarity_quantile", type=float, default=0.1)
+    parser.add_argument("--workers", type=int, default=min(8, os.cpu_count() or 1))
     args = parser.parse_args()
     if args.buffer_pixels < 0:
         raise ValueError("buffer_pixels must be non-negative")
     if not 0 <= args.query_similarity_quantile <= 1:
         raise ValueError("query_similarity_quantile must be in [0, 1]")
+    if args.workers <= 0:
+        raise ValueError("workers must be positive")
     queries = _read_csv(args.queries_csv)
     if not queries:
         raise RuntimeError("queries CSV is empty")
@@ -189,23 +220,39 @@ def main() -> None:
     queries_by_image: dict[str, list[dict[str, str]]] = defaultdict(list)
     for query in cell_queries:
         queries_by_image[query["image_id"]].append(query)
-    for head in args.heads:
-        for image_id, image_queries in queries_by_image.items():
-            slide_data = load_retrieval_slide(output_root, image_id, head)
-            for query in image_queries:
-                result = evaluate_query(
-                    query,
-                    slide_data,
-                    head,
-                    args.buffer_pixels,
-                    args.query_similarity_quantile,
-                )
-                if result["valid"]:
-                    results.append(result)
-                else:
-                    invalid_results.append(
-                        {"head": head, "query_id": query["query_id"], **result}
-                    )
+    ordered_pairs = [
+        (head, image_id)
+        for head in args.heads
+        for image_id in queries_by_image
+    ]
+    results_by_pair: dict[tuple[str, str], list[dict]] = {}
+    invalid_by_pair: dict[tuple[str, str], list[dict]] = {}
+    with ProcessPoolExecutor(max_workers=args.workers) as executor:
+        future_to_pair = {
+            executor.submit(
+                _evaluate_slide_queries_job,
+                str(output_root),
+                image_id,
+                queries_by_image[image_id],
+                head,
+                args.buffer_pixels,
+                args.query_similarity_quantile,
+            ): (head, image_id)
+            for head, image_id in ordered_pairs
+        }
+        for completed, future in enumerate(as_completed(future_to_pair), start=1):
+            head, image_id = future_to_pair[future]
+            _, _, pair_results, pair_invalid = future.result()
+            results_by_pair[(head, image_id)] = pair_results
+            invalid_by_pair[(head, image_id)] = pair_invalid
+            print(
+                f"retrieval_slide {completed}/{len(ordered_pairs)} "
+                f"head={head} image_id={image_id} valid={len(pair_results)}",
+                flush=True,
+            )
+    for pair in ordered_pairs:
+        results.extend(results_by_pair.get(pair, []))
+        invalid_results.extend(invalid_by_pair.get(pair, []))
     if not results:
         raise RuntimeError("retrieval evaluation produced no valid query results")
     output_path = output_root / "region_retrieval" / "cell_retrieval_metrics.csv"

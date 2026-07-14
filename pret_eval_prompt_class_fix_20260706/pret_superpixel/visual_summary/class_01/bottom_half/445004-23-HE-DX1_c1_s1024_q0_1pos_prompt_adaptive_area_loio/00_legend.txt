@@ -1,0 +1,37 @@
+category: bottom_half
+query_id: 445004-23-HE-DX1_c1_s1024_q0
+image_id: 445004-23-HE-DX1
+eval_class: 1 tumor_stroma
+query_class: 1 tumor_stroma
+prompt_derived_recomputed_class: 1 tumor_stroma
+prompt_derived_recomputed_fraction: 1.000000
+query_eval_class_match: 1
+interaction_protocol: 1pos
+threshold_protocol: prompt_adaptive_area_loio
+negative_source: none
+prototype_compactness: 1.000000
+positive_gt_majority_label: 1
+positive_gt_target_fraction: 1.000000
+positive_gt_mean_purity: 0.549708
+negative_gt_majority_label: 
+negative_gt_target_fraction: 0.000000
+negative_gt_mean_purity: 0.000000
+negative_gt_min_purity: 0.000000
+
+Score heatmap: blue low, green middle, red high.
+Error map: green TP, magenta FP, gray FN, light gray TN/ignored.
+Prompt overlay: blue positive, magenta negative.
+
+GDPH palette:
+0: tumor_epithelium rgb=[240, 0, 0]
+1: tumor_stroma rgb=[245, 150, 0]
+2: background rgb=[255, 255, 255]
+3: necrosis rgb=[110, 40, 120]
+4: normal_gland rgb=[255, 230, 0]
+5: normal_stroma rgb=[30, 160, 210]
+6: submucosa_serosa rgb=[120, 180, 40]
+7: muscle rgb=[20, 170, 60]
+8: lymphocyte_aggregate rgb=[0, 70, 150]
+9: mucus rgb=[0, 150, 140]
+10: fat rgb=[180, 180, 180]
+11: blood rgb=[230, 0, 120]

@@ -3,6 +3,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
+from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
@@ -79,7 +82,7 @@ def evaluate_patch_query(
             return []
         patch_query[int(np.argmax(overlap_area))] = True
     patch_prototype = normalized_median_prototype(np.asarray(patch_features[patch_query]))
-    normalized_patch = np.asarray(patch_features, dtype=np.float32)
+    normalized_patch = np.array(patch_features, dtype=np.float32, copy=True)
     normalized_patch /= np.maximum(np.linalg.norm(normalized_patch, axis=1, keepdims=True), 1e-12)
     patch_score = normalized_patch @ patch_prototype
 
@@ -161,6 +164,33 @@ def evaluate_patch_query(
     return outputs
 
 
+def _evaluate_patch_slide_queries_job(
+    output_root: str,
+    image_id: str,
+    image_queries: list[dict[str, str]],
+    cell_head: str,
+    alpha: float,
+    max_cell_distance: float,
+    buffer_pixels: float,
+    query_similarity_quantile: float,
+) -> tuple[str, str, list[dict]]:
+    output_root_path = Path(output_root)
+    results = []
+    for query in image_queries:
+        results.extend(
+            evaluate_patch_query(
+                query,
+                output_root_path,
+                cell_head,
+                alpha,
+                max_cell_distance,
+                buffer_pixels,
+                query_similarity_quantile,
+            )
+        )
+    return cell_head, image_id, results
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate patch and cell+patch region retrieval.")
     parser.add_argument(
@@ -172,6 +202,7 @@ def main() -> None:
     parser.add_argument("--max_cell_distance", type=float, default=200.0)
     parser.add_argument("--buffer_pixels", type=float, default=256.0)
     parser.add_argument("--query_similarity_quantile", type=float, default=0.1)
+    parser.add_argument("--workers", type=int, default=min(8, os.cpu_count() or 1))
     args = parser.parse_args()
     if not (0 <= args.alpha <= 1):
         raise ValueError("alpha must be in [0, 1]")
@@ -179,21 +210,51 @@ def main() -> None:
         raise ValueError("max_cell_distance must be positive and buffer_pixels non-negative")
     if not 0 <= args.query_similarity_quantile <= 1:
         raise ValueError("query_similarity_quantile must be in [0, 1]")
+    if args.workers <= 0:
+        raise ValueError("workers must be positive")
     queries = _read_csv(args.queries_csv)
+    queries_by_image: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for query in queries:
+        queries_by_image[query["image_id"]].append(query)
+    ordered_pairs = [
+        (head, image_id)
+        for head in args.cell_heads
+        for image_id in queries_by_image
+    ]
+    pair_results: dict[tuple[str, str], list[dict]] = {}
+    with ProcessPoolExecutor(max_workers=args.workers) as executor:
+        future_to_pair = {
+            executor.submit(
+                _evaluate_patch_slide_queries_job,
+                args.output_root,
+                image_id,
+                queries_by_image[image_id],
+                head,
+                args.alpha,
+                args.max_cell_distance,
+                args.buffer_pixels,
+                args.query_similarity_quantile,
+            ): (head, image_id)
+            for head, image_id in ordered_pairs
+        }
+        for completed, future in enumerate(as_completed(future_to_pair), start=1):
+            head, image_id = future_to_pair[future]
+            _, _, results_for_pair = future.result()
+            pair_results[(head, image_id)] = results_for_pair
+            print(
+                f"patch_retrieval_slide {completed}/{len(ordered_pairs)} "
+                f"head={head} image_id={image_id} results={len(results_for_pair)}",
+                flush=True,
+            )
     results = []
     seen_results: set[tuple[str, str]] = set()
-    for head in args.cell_heads:
-        for query in queries:
-            query_results = evaluate_patch_query(
-                query, Path(args.output_root), head, args.alpha,
-                args.max_cell_distance, args.buffer_pixels, args.query_similarity_quantile,
-            )
-            for result in query_results:
-                key = (result["method"], result["query_id"])
-                if key in seen_results:
-                    continue
-                seen_results.add(key)
-                results.append(result)
+    for pair in ordered_pairs:
+        for result in pair_results.get(pair, []):
+            key = (result["method"], result["query_id"])
+            if key in seen_results:
+                continue
+            seen_results.add(key)
+            results.append(result)
     if not results:
         raise RuntimeError("patch/hybrid retrieval produced no valid results")
     output_dir = Path(args.output_root) / "dense_evaluation"

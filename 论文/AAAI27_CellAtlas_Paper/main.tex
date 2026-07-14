@@ -1,0 +1,235 @@
+\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
+\usepackage[submission]{aaai2027}  % DO NOT CHANGE THIS
+\usepackage[hyphens]{url}  % DO NOT CHANGE THIS
+\usepackage{graphicx} % DO NOT CHANGE THIS
+\urlstyle{rm} % DO NOT CHANGE THIS
+\def\UrlFont{\rm}  % DO NOT CHANGE THIS
+\usepackage{natbib}  % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\usepackage{caption} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\frenchspacing  % DO NOT CHANGE THIS
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+
+\pdfinfo{
+/TemplateVersion (2027.1)
+}
+
+\setcounter{secnumdepth}{0}
+
+\title{CellAtlas-MPS: Multi-Scale Prompt-Aware Superpixel Segmentation for Histopathology}
+\author{Anonymous Submission}
+\affiliations{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Interactive tissue segmentation in hematoxylin and eosin whole-slide images requires models that can follow user intent while remaining robust to heterogeneous tissue morphology and annotation scale. We introduce CellAtlas-MPS, a multi-scale prompt-aware superpixel framework for prompt-conditioned histopathology segmentation. Instead of treating a prompt as a global image-level query or converting retrieval scores to masks with hand-tuned thresholds, CellAtlas-MPS represents each slide as a hierarchy of cell-informed superpixel graphs, maps positive and negative prompts to region tokens, selects the appropriate operating scale for each query, and decodes calibrated superpixel probabilities with local graph context. The framework preserves the interpretability and efficiency of region-level retrieval while turning prompt responses into spatially coherent tissue masks.
+\end{abstract}
+
+\section{Introduction}
+
+Accurate tissue segmentation in hematoxylin and eosin (H\&E) whole-slide images is a fundamental step for computational pathology. In practice, however, the target tissue concept is often study-dependent: the same image may be queried for tumor epithelium, necrotic regions, mucus, smooth muscle, or other structures depending on the downstream analysis. Fully supervised semantic segmentation requires dense class annotations and fixes the label space in advance, while purely retrieval-based systems provide useful region ranking but still require manual score thresholds and post-processing to obtain masks.
+
+Promptable segmentation offers a more flexible interface because a user can specify the current target with positive and negative examples. Histopathology presents two difficulties that are less prominent in natural images. First, the spatial scale of the prompt varies substantially: a small clean prompt is useful for boundary-sensitive structures, whereas a broad prompt may better capture large homogeneous tissue. Second, tissue appearance is strongly contextual. Regions with similar color or texture may correspond to different tissue types depending on neighboring cells, glands, and stromal organization. A fixed-scale prompt retrieval method therefore tends to be sensitive to prompt size, negative examples, and manually chosen thresholds.
+
+We address these issues with CellAtlas-MPS, a multi-scale prompt-aware superpixel framework. The key idea is to keep the segmentation unit interpretable and compact by operating on superpixels, but to make the prompt-to-mask conversion adaptive. The method constructs cell-informed region tokens at multiple scales, performs positive-negative prompt retrieval on each scale, learns a query-specific scale selector, and decodes superpixel probabilities with either an MLP decoder or a graph refiner. This design separates three decisions that are usually entangled in interactive tissue segmentation: which spatial scale should be used, how retrieval scores should be calibrated into probabilities, and how local tissue continuity should refine the final mask.
+
+\section{Method}
+
+\subsection{Problem Formulation}
+
+Given a hematoxylin and eosin (H\&E) whole-slide image or its 10$\times$ representation, we denote the image domain by $\Omega \subset \mathbb{R}^{2}$. A user interaction consists of positive and negative prompts,
+\begin{equation}
+    \mathcal{P}^{+}=\{p_i^{+}\}_{i=1}^{N_{+}}, \qquad
+    \mathcal{P}^{-}=\{p_j^{-}\}_{j=1}^{N_{-}},
+\end{equation}
+where each prompt can be a box, a local region, or the set of superpixels covered by the prompted area. For a target tissue class $c$, interactive tissue segmentation is formulated as a target-versus-rest binary prediction task:
+\begin{equation}
+    f_{\theta}(I,\mathcal{P}^{+},\mathcal{P}^{-},c) \rightarrow M_c,
+\end{equation}
+where $I$ is the H\&E image and $M_c \in [0,1]^{|\Omega|}$ is the target probability mask. Different queries are allowed to produce overlapping masks because the task is defined by the user's current intent rather than by a single mutually exclusive semantic partition.
+
+A region-retrieval baseline provides interpretable prompt responses over H\&E superpixels, but its final mask generation depends on a fixed scale, manually selected thresholds, and empirical score-to-mask conversion. We therefore introduce CellAtlas-MPS, a multi-scale prompt-aware superpixel framework that preserves the stable region-token representation while learning or calibrating three operations that were previously hand designed: prompt scale selection, score-to-mask decoding, and graph-based region refinement.
+
+\subsection{Framework Overview}
+
+CellAtlas-MPS contains five stages. First, each H\&E image is partitioned into superpixels at three scales, denoted by small, medium, and large, and each superpixel is encoded as a region token. Second, positive and negative prompts are mapped to scale-specific superpixel sets to form a prompt task. Third, prompt retrieval is performed independently at each scale to obtain positive scores, negative scores, and final retrieval responses for all candidate superpixels. Fourth, a Prompt Scale Selector predicts the scale most suitable for the current query from prompt geometry, prompt purity, and score-distribution statistics. Finally, a Prompt-conditioned Mask Decoder or Graph Refiner converts region tokens, prompt scores, and spatial context into superpixel-level probabilities that are projected back to the pixel grid.
+
+The overall computation is summarized as
+\begin{equation}
+\begin{aligned}
+    I \rightarrow \{\mathcal{G}^{s}\}_{s \in \mathcal{S}}
+    \rightarrow \{Z^{s}, A^{s}\}_{s \in \mathcal{S}}
+    \rightarrow \{R^{s}(q)\}_{s \in \mathcal{S}}\\
+    \rightarrow \hat{s}
+    \rightarrow \hat{M}_{q}.
+\end{aligned}
+\end{equation}
+where $\mathcal{S}=\{\mathrm{small},\mathrm{medium},\mathrm{large}\}$, $\mathcal{G}^{s}$ is the superpixel graph at scale $s$, $Z^{s}$ is the region-token matrix, $A^{s}$ is the superpixel adjacency edge list, $R^{s}(q)$ is the retrieval response for query $q$, $\hat{s}$ is the selected scale, and $\hat{M}_{q}$ is the predicted mask.
+
+\subsection{Prompt-Task Construction}
+
+Each whole-slide image is represented by a unified set of tissue annotations, nucleus maps, cell-level features, cell coordinates, cell polygons, superpixel partitions, and prompt records. Our benchmark contains 20 H\&E slides with tissue masks, cell features, cell coordinates, medium-scale superpixels, and region tokens. A total of 1,161 high-purity prompt records are derived from annotated tissue regions and used as expert prompts.
+
+Each training or evaluation example is a prompt segmentation task,
+\begin{equation}
+    q=(\mathrm{image\_id}, c, \mathcal{P}^{+}, \mathcal{P}^{-}),
+\end{equation}
+where $c$ is the target tissue class. For a prompt region $B$, its prompt purity is defined as the fraction of valid tissue pixels belonging to the target class:
+\begin{equation}
+    \rho(B,c)=
+    \frac{\sum_{x\in B}\mathbb{I}[Y(x)=c]}
+    {\sum_{x\in B}\mathbb{I}[Y(x)\neq \mathrm{background}] + \epsilon}.
+\end{equation}
+In addition to expert prompts, we construct automatic prompt tasks with clean positives, noisy positives, and hard negatives. Clean positives satisfy $\rho(B,c)\geq0.8$, whereas noisy positives cover $0.5\leq\rho(B,c)<0.8$. Hard negatives are not sampled from random background. Instead, they are selected from non-target regions that are visually or token-wise similar to the target, such as normal glands for tumor epithelium, mucus for necrosis, and submucosa or serosa for muscle.
+
+\subsection{Multi-Scale Superpixels and Region Tokens}
+
+To adapt to different prompt sizes and tissue structures, each image is represented at three superpixel scales:
+\begin{equation}
+    d_{\mathrm{small}}=0.5d_{0}, \quad
+    d_{\mathrm{medium}}=d_{0}, \quad
+    d_{\mathrm{large}}=2d_{0},
+\end{equation}
+where $d_{0}$ is the base region diameter estimated from the 10$\times$ tissue resolution and cell-density statistics. The medium scale serves as the reference partition. The small scale is obtained by locally splitting medium regions to improve boundary granularity, and the large scale is obtained by merging neighboring medium regions to capture larger semantic context. Independent SLIC generation can also be used for scale-specific ablations.
+
+For each image and scale, the region representation includes the 10$\times$ H\&E array, the superpixel map, superpixel metadata, an adjacency edge list $A^s$, base region tokens $Z_{\mathrm{base}}^s$, enhanced region tokens $Z_{\mathrm{enh}}^s$, and ground-truth label statistics. Each superpixel record stores area, centroid, bounding box, cell count, cell density, majority ground-truth label, target-class fraction, label purity, and valid-tissue fraction. The base token concatenates image features, aggregated cell features, and registered cell-context features, resulting in a 274-dimensional representation. The enhanced token further augments the base representation with texture descriptors and cell-statistics features, resulting in a 309-dimensional representation.
+
+For a superpixel $v_k^s$, the base representation is
+\begin{equation}
+    z_k^s =
+    \operatorname{Norm}
+    \left(
+    [\phi_{\mathrm{img}}(v_k^s),\;
+    \phi_{\mathrm{cell}}(v_k^s),\;
+    \phi_{\mathrm{reg}}(v_k^s)]
+    \right),
+\end{equation}
+where $\phi_{\mathrm{img}}$ is the image feature, $\phi_{\mathrm{cell}}$ is the aggregated cell feature, $\phi_{\mathrm{reg}}$ is the registered cell-expression or morphology-related feature, and $\operatorname{Norm}(\cdot)$ denotes vector normalization. The enhanced token is
+\begin{equation}
+    \tilde{z}_k^s =
+    \operatorname{Norm}
+    \left(
+    [z_k^s,\phi_{\mathrm{tex}}(v_k^s),\phi_{\mathrm{stat}}(v_k^s)]
+    \right).
+\end{equation}
+
+\subsection{Prompt Retrieval Baseline}
+
+At each scale $s$, a prompt region is mapped to its covered superpixels. Let $Q^{+,s}$ and $Q^{-,s}$ be the positive and negative prompt-token sets. For a candidate token $z_k^s$, we compute
+\begin{equation}
+    r_{k,+}^{s}=\max_{u\in Q^{+,s}}\cos(z_k^s,u),
+    \qquad
+    r_{k,-}^{s}=\max_{u\in Q^{-,s}}\cos(z_k^s,u).
+\end{equation}
+The final retrieval score is
+\begin{equation}
+    r_k^{s}=
+    \begin{cases}
+    r_{k,+}^{s}-\lambda r_{k,-}^{s}, & |\mathcal{P}^{-}|>0,\\
+    r_{k,+}^{s}, & |\mathcal{P}^{-}|=0,
+    \end{cases}
+\end{equation}
+where $\lambda=0.5$ by default. This score preserves the interpretability of region retrieval: high-scoring regions are close to positive prompts and suppressed by negative prompts. For each query-scale pair, the retrieval representation contains segment identifiers, positive scores, negative scores, final scores, rank percentiles, superpixel-level soft labels, hard labels, areas, and centroids.
+
+\subsection{Prompt Scale Selector}
+
+A fixed medium scale cannot simultaneously handle small precise prompts and broad semantic prompts. We therefore formulate scale selection as a three-way classification problem:
+\begin{equation}
+    g_{\psi}(h_q) \rightarrow \hat{s}\in\{\mathrm{small},\mathrm{medium},\mathrm{large}\},
+\end{equation}
+where $h_q$ contains prompt area, box width and height, aspect ratio, prompt purity, the number of prompt-covered tokens at each scale, and retrieval-score statistics such as score standard deviation and positive-negative score gaps. Training labels are derived from three-scale baseline results:
+\begin{equation}
+    s^{*}=\arg\max_{s\in\mathcal{S}} \operatorname{Dice}_{\mathrm{select}}^{s}(q),
+\end{equation}
+where $\operatorname{Dice}_{\mathrm{select}}$ can be BestDice, classwise top-area Dice, or prompt-adaptive Dice. Since supervision is available at the slide level and prompts from the same slide are correlated, we use lightweight classifiers such as Random Forest, Gradient Boosting, or a small MLP for scale selection.
+
+\subsection{Prompt-Conditioned Mask Decoder}
+
+Prompt retrieval ranks regions but does not directly produce calibrated probabilities. We replace manual thresholding with a Prompt-conditioned Mask Decoder that predicts a target probability for every query-scale-superpixel:
+\begin{equation}
+    p_k^s = \sigma\left(d_{\omega}(x_k^s;q)\right),
+\end{equation}
+where $d_{\omega}$ is an MLP and $x_k^s$ concatenates the region token, prompt responses, geometry, and local context:
+\begin{equation}
+\begin{split}
+    x_k^s=[&z_k^s,\;
+    r_{k,+}^{s}, r_{k,-}^{s}, r_k^s,\;
+    \operatorname{rank}(r_k^s),\;
+    a_k,\bar{x}_k,\bar{y}_k,\\
+    &n_k,\delta_k,\;
+    d_k^{+}, d_k^{-},\;
+    \mu_{\mathcal{N}(k)}(r),\max_{\mathcal{N}(k)}(r),
+    \sigma_{\mathcal{N}(k)}(r)] .
+\end{split}
+\end{equation}
+Here $a_k$ is the region area, $(\bar{x}_k,\bar{y}_k)$ is the normalized centroid, $n_k$ is the cell count, $\delta_k$ is the cell density, $d_k^{+}$ and $d_k^{-}$ are distances to positive and negative prompts, and $\mathcal{N}(k)$ is the adjacent-superpixel set. The soft label is the target-class fraction within the superpixel:
+\begin{equation}
+\begin{aligned}
+    y_k^s =
+    \frac{\sum_{x\in v_k^s}\mathbb{I}[Y(x)=c]}
+    {\sum_{x\in v_k^s}\mathbb{I}[Y(x)\neq \mathrm{background}] + \epsilon},\\
+    \bar{y}_k^s=\mathbb{I}[y_k^s>0.5].
+\end{aligned}
+\end{equation}
+The decoder is trained with binary cross-entropy and soft Dice losses:
+\begin{equation}
+\begin{aligned}
+    \mathcal{L}_{\mathrm{dec}}=
+    \operatorname{BCEWithLogits}(o,y;\alpha)
+    +\lambda_{\mathrm{dice}}\mathcal{L}_{\mathrm{Dice}},\\
+    \mathcal{L}_{\mathrm{Dice}}=
+    1-\frac{2\sum_k p_k y_k+\epsilon}
+    {\sum_k p_k+\sum_k y_k+\epsilon}.
+\end{aligned}
+\end{equation}
+where $o$ is the logit, $\alpha$ is the positive-class weight, and $\lambda_{\mathrm{dice}}=1.0$ by default.
+
+\subsection{Graph Refiner}
+
+Because tissue regions are spatially coherent, independent MLP predictions can produce isolated false positives or fragmented masks. We therefore refine prompt-conditioned predictions on the superpixel graph. Each node is a superpixel and each edge is a spatial adjacency relation:
+\begin{equation}
+    \mathcal{H}^{(0)} = X^s, \qquad
+    \mathcal{H}^{(\ell+1)}
+    =
+    \operatorname{GraphSAGE}_{\ell}
+    \left(\mathcal{H}^{(\ell)}, A^s\right),
+\end{equation}
+\begin{equation}
+    p_k^s = \sigma\left(W_o h_k^{(L)}+b_o\right).
+\end{equation}
+GraphSAGE is used as the primary graph refiner because it is stable on sparse region graphs and avoids dense adjacency matrices. The graph refiner uses the same node features and labels as the MLP decoder while explicitly aggregating neighborhood context to smooth tissue boundaries and suppress spatially inconsistent predictions.
+
+\subsection{Multi-Scale Fusion}
+
+Scale selection produces a single-scale decision, whereas fusion exploits complementary predictions across all three scales. We compare medium-only retrieval, a manual prompt-size rule, the learned scale selector, score-level fusion, max fusion, and an oracle best scale. For score-level fusion, scale-specific probability maps are projected to the same 10$\times$ image grid and combined as
+\begin{equation}
+\begin{aligned}
+    P(x)=
+    w_{\mathrm{small}}P_{\mathrm{small}}(x)
+    +w_{\mathrm{medium}}P_{\mathrm{medium}}(x)\\
+    +w_{\mathrm{large}}P_{\mathrm{large}}(x),
+    \sum_{s\in\mathcal{S}}w_s=1.
+\end{aligned}
+\end{equation}
+The weights can be derived from the selector probabilities or predicted by a lightweight MLP from query-level features. The non-parametric max-fusion baseline is
+\begin{equation}
+    P(x)=\max_{s\in\mathcal{S}} P_s(x).
+\end{equation}
+
+\section{Experiments}
+
+We evaluate CellAtlas-MPS under WSI-level five-fold cross-validation. With 20 slides, each fold uses 16 training slides, two validation slides, and two test slides. Each fold holds out slides rather than individual prompts, preventing prompts from the same slide from appearing in both training and testing. The evaluation compares medium-scale retrieval, prompt-size heuristic scale selection, learned scale selection, the prompt-conditioned mask decoder, graph refinement, and multi-scale fusion. Expert-prompt and automatically generated prompt settings are reported separately to distinguish user-facing performance from large-scale training behavior.
+
+The primary segmentation metrics are Dice, mean intersection-over-union, Boundary F1, precision, and recall. For retrieval-oriented analysis, we additionally report mean average precision, AUROC, top-$k$ precision, threshold-specific Dice, and BestDice. Scale selection is evaluated by scale accuracy, macro F1, and the Dice score obtained by the selected scale. Ablation studies isolate the effect of region features, prompt composition, scale choice, decoder architecture, graph refinement, and fusion strategy.
+
+\section{Conclusion}
+
+CellAtlas-MPS formulates interactive histopathology segmentation as prompt-conditioned multi-scale superpixel prediction. By combining cell-informed region tokens, adaptive scale selection, calibrated mask decoding, and graph-based refinement, the framework provides an interpretable route from positive-negative prompts to spatially coherent tissue masks.
+
+% Uncomment after adding citations to references.bib.
+% \bibliography{references}
+
+\end{document}

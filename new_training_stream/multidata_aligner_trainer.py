@@ -46,7 +46,8 @@ def load_pkl(path):
         return pickle.load(f)
 
 
-def hungary_mse_loss(he_feat, mif_feat, start_index, mif_channel):
+def aligned_mse_loss(he_feat, mif_feat, start_index, mif_channel):
+    """对已经按行对齐的 HE/mIF 细胞特征做 MSE；这里不执行匹配算法。"""
     he_slice = he_feat[:, start_index : start_index + mif_channel]
     mif_slice = mif_feat[:, :mif_channel]
     return F.mse_loss(he_slice, mif_slice)
@@ -314,7 +315,7 @@ def main(args):
                 he_valid = he_valid[:min_len]
                 mif_pos_valid = mif_pos_valid[:min_len]
 
-                loss_mse = hungary_mse_loss(
+                loss_mse = aligned_mse_loss(
                     he_valid, mif_pos_valid, start_index, mif_channel
                 )
 
@@ -389,7 +390,7 @@ def main(args):
                     he_valid = he_valid[:min_len]
                     mif_pos_valid = mif_pos_valid[:min_len]
 
-                    val_mse = hungary_mse_loss(
+                    val_mse = aligned_mse_loss(
                         he_valid, mif_pos_valid, start_index, mif_channel
                     )
                     val_avg_loss += val_mse.item()
