@@ -1,9 +1,9 @@
 # Phase A 多尺度可视化检查报告
 
-- generated_at: 2026-07-09T10:51:32
-- visual_root: `/nfs-medical3/zyh/v3/cellatlas_pret_superpixel_aaai_v3_multiscale_refiner/pret_superpixel/visualizations/phase_a_multiscale_check_connectivity242_dist256`
-- index_csv: `/nfs-medical3/zyh/v3/cellatlas_pret_superpixel_aaai_v3_multiscale_refiner/pret_superpixel/visualizations/phase_a_multiscale_check_connectivity242_dist256/visual_index.csv`
-- rendered_images: 14
+- generated_at: 2026-07-09T21:05:17
+- visual_root: `/nfs-medical3/zyh/v3/cellatlas_pret_superpixel_aaai_v3_multiscale_refiner/pret_superpixel/visualizations/phase_a_multiscale_check_lowmag_slic`
+- index_csv: `/nfs-medical3/zyh/v3/cellatlas_pret_superpixel_aaai_v3_multiscale_refiner/pret_superpixel/visualizations/phase_a_multiscale_check_lowmag_slic/visual_index.csv`
+- rendered_images: 20
 
 ## 使用方法
 

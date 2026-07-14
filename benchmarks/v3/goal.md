@@ -321,9 +321,9 @@ scale_counts:
 
 ---
 
-# 4. 阶段 B：构建 prompt-task 数据集
+# 4. 阶段 B：构建 prompt-task 数据集 已完成标记
 
-## 4.1 数据单位
+## 4.1 数据单位 已完成标记
 
 每条训练样本不是一张图，而是一次 prompt 分割任务：
 
@@ -341,112 +341,153 @@ target-vs-rest binary segmentation
 
 ---
 
-## 4.2 整理已有 1000+ 条优质 prompt
+## 4.2 Phase B 重设计 已完成标记
 
-将人工优质 prompt 整理为：
+Phase B 不再沿用旧 prompt CSV 作为训练/评估数据。正式 prompt task 全部从 Phase A 当前
+`lowmag_loose + slic` 生成的新 multiscale superpixel 中重新采样，prompt 的基础粒度是
+`medium` superpixel。
+
+旧文件：
 
 ```bash
-prompt_tasks/expert_prompts.csv
+/nfs-medical3/zyh/pret_eval_prompt_class_fix_20260706_gt_pure_prompts/prompts.csv
 ```
 
-字段：
+仅作为审计参考，不写入正式 `all_prompt_tasks.csv`。如需保留旧 prompt，仅输出：
 
-```text
-prompt_id
-query_id
-image_id
-target_class
-prompt_type          # positive / negative
-x0
-y0
-x1
-y1
-mask_path_optional
-prompt_area
-prompt_purity
-source               # expert / automatic
+```bash
+prompt_tasks/legacy_prompt_audit.csv
 ```
 
-其中 `prompt_purity` 用 GT 统计：
+并标记：
 
 ```text
-prompt 内 target_class 像素比例
+usage_status = not_used
 ```
 
 ---
 
-## 4.3 自动生成补充 prompt tasks
+## 4.3 输入与采样规则 已完成标记
 
-从 GT 中自动生成大量 prompt task，用于训练轻量模型。
-
-目标数量：
+输入只使用：
 
 ```text
-3000 ~ 6000 条 prompt task
+data_manifest_v3.csv
+multiscale_tokens/<image_id>/medium/superpixels.csv
+multiscale_tokens/<image_id>/medium/superpixels.npy
+multiscale_tokens/<image_id>/medium/tokens_image_cell_reg.npy
+GT mask 统计字段
 ```
 
-每张 WSI 每个有效 class 采样：
+`small` / `large` 不参与 Phase B prompt 采样，只在 Phase C retrieval 评分时参与。
+
+采样规则：
 
 ```text
-20 ~ 50 个 positive prompt
+clean positive:
+  gt_majority_label == target_class
+  gt_purity >= 0.8
+  valid_fraction >= 0.8
+
+noisy positive:
+  gt_majority_label == target_class
+  0.5 <= gt_purity < 0.8
+  valid_fraction >= 0.5
+
+hard negative:
+  gt_majority_label != target_class
+  valid_fraction >= 0.5
+  优先选择与 target clean prototype cosine 相似度高的非 target segment
 ```
 
-生成三类 prompt：
-
-### A. clean positive
+每个有效 `(image_id, target_class)` 最多采样：
 
 ```text
-prompt_purity >= 0.8
+clean 10
+noisy 5
+hard-negative 10
 ```
 
-### B. noisy positive
+query 结构：
 
-```text
-0.5 <= prompt_purity < 0.8
+```
+每个 query 至少 1 个 positive prompt
+hard-negative query 配 1-3 个 negative prompts
+同时保留 positive-only query 和 positive+negative query
 ```
 
-### C. hard negative
+prompt box 使用新 superpixel 的 `bbox_x0/y0/x1/y1`，坐标系为 Phase A 10x / GT mask 坐标系。
+class id 保持数字 id，不做 class name 映射。
 
-negative 不要随机从 box 外取。
+---
 
-hard negative 规则：
+## 4.4 输出与验证 已完成标记
 
-```text
-1. target class = c
-2. candidate negative 必须 class != c
-3. 优先选择与 positive prototype 相似度高的不同类区域
-4. 或选择容易混淆的类别
-```
+脚本：
 
-典型 hard negative：
-
-```text
-target = tumor_epithelium
-negative = normal_gland / tumor_stroma
-
-target = necrosis
-negative = mucus / stroma
-
-target = muscle
-negative = submucosa_serosa
-
-target = mucus
-negative = necrosis / low-cell stroma
+```bash
+/home/zhaoyh/CellAtlas/benchmarks/v3/phase_b/build_prompt_tasks.py
 ```
 
 输出：
 
 ```bash
 prompt_tasks/auto_prompt_tasks.csv
-prompt_tasks/expert_prompt_tasks.csv
 prompt_tasks/all_prompt_tasks.csv
+prompt_tasks/prompt_task_summary.csv
+prompt_tasks/legacy_prompt_audit.csv
+reports/phase_b_validation.json
+visualizations/phase_b_prompt_task_samples/
+/home/zhaoyh/CellAtlas/benchmarks/v3/phase_b/report.md
+```
+
+不生成 `expert_prompt_tasks.csv` 作为正式数据。
+
+最终验证摘要：
+
+```text
+passed: true
+total_queries: 3711
+unique_query_ids: 3711
+images: 20
+classes: 12
+clean queries: 1293
+noisy queries: 918
+hard-negative queries: 1500
+positive-only queries: 2211
+positive+negative queries: 1500
+legacy prompt rows audited as not_used: 1161
+sample visualizations: 36
+```
+
+验证内容：
+
+```text
+重新计算 prompt_purity 并写入输出字段
+hard negative 的 negative_gt_majority_label != target_class
+每个 query 至少一个 positive prompt
+输出类别覆盖表：每个 class 的 clean/noisy/hard-negative 数量
+旧 prompt CSV 不进入正式 Phase B 输出
+Phase B 不训练模型，不跑 retrieval
+```
+
+报告：
+
+```bash
+/home/zhaoyh/CellAtlas/benchmarks/v3/phase_b/report.md
+```
+
+验证 JSON：
+
+```bash
+/nfs-medical3/zyh/v3/cellatlas_pret_superpixel_aaai_v3_multiscale_refiner/pret_superpixel/reports/phase_b_validation.json
 ```
 
 ---
 
-# 5. 阶段 C：为每个 query 在三种尺度上跑 baseline retrieval
+# 5. 阶段 C：为每个 query 在三种尺度上跑 baseline retrieval 已完成标记
 
-## 5.1 对每个 query、每个 scale 计算 score
+## 5.1 对每个 query、每个 scale 计算 score 已完成标记
 
 对于每条 query：
 
@@ -476,7 +517,7 @@ score(x) = score_pos(x)
 
 ---
 
-## 5.2 需要保存的 query-scale 结果
+## 5.2 需要保存的 query-scale 结果 已完成标记
 
 输出：
 
@@ -500,7 +541,7 @@ center_xy
 
 ---
 
-## 5.3 每个尺度计算指标
+## 5.3 每个尺度计算指标 已完成标记
 
 每个 query-scale 计算：
 
@@ -534,11 +575,78 @@ FN_area
 evaluations/multiscale_baseline_metrics.csv
 ```
 
+脚本：
+
+```bash
+/home/zhaoyh/CellAtlas/benchmarks/v3/phase_c/run_multiscale_baseline.py
+```
+
+最终运行命令：
+
+```bash
+conda run -n aligner python benchmarks/v3/phase_c/run_multiscale_baseline.py --workers 4
+```
+
+实现说明：
+
+```text
+prompt 来自 Phase B medium superpixel。
+medium 尺度优先使用原始 prompt segment id。
+small / large 尺度使用 prompt bbox 在对应尺度选择 center 命中 segment，必要时回退到 bbox overlap。
+GT hard/soft label 使用 Phase A 已标准化 superpixels.csv 中的 gt_majority_label / gt_purity / valid_fraction 字段。
+gt_soft_label_per_superpixel = target-majority segment 的 gt_purity * valid_fraction，否则为 0。
+```
+
+最终验证摘要：
+
+```text
+passed: true
+prompt queries: 3711
+query-scale rows: 11133
+score npz files: 11133
+ok metric rows: 11126
+degenerate_target rows: 7
+scale_counts:
+  small: 3711
+  medium: 3711
+  large: 3704 ok + 7 degenerate_target
+```
+
+报告：
+
+```bash
+/home/zhaoyh/CellAtlas/benchmarks/v3/phase_c/report.md
+```
+
+验证 JSON：
+
+```bash
+/nfs-medical3/zyh/v3/cellatlas_pret_superpixel_aaai_v3_multiscale_refiner/pret_superpixel/reports/phase_c_validation.json
+```
+
+像素级正式评估已完成：将预测的完整 superpixel 回填到图像，与原始 GT 像素直接计算指标。
+
+```text
+overall PixelDice_classwise_toparea: 0.4014
+overall Pixel_mIoU: 0.2701
+overall PixelBestDice: 0.4925
+small / medium / large PixelDice: 0.4277 / 0.4065 / 0.3700
+```
+
+正式结果使用：
+
+```bash
+evaluations/multiscale_pixel_metrics.csv
+evaluations/pixel_class_scale_summary.csv
+```
+
+`GT-presence` 只作为 coverage diagnostic；后续阶段 D/E/F 的 Dice/mIoU 主结果使用 pixel-level 口径。
+
 ---
 
-# 6. 阶段 D：训练 Prompt Scale Selector
+# 6. 阶段 D：训练 Prompt Scale Selector 已完成标记
 
-## 6.1 目标
+## 6.1 目标 已完成标记
 
 训练一个模型自动选择当前 prompt 最适合的尺度：
 
@@ -552,7 +660,7 @@ small / medium / large
 
 ---
 
-## 6.2 训练标签
+## 6.2 训练标签 已完成标记
 
 对每个 query，三种尺度都已经有指标。
 
@@ -605,7 +713,7 @@ best_scale
 
 ---
 
-## 6.3 模型
+## 6.3 模型 已完成标记
 
 先训练轻量模型：
 
@@ -621,7 +729,7 @@ MLPClassifier
 
 ---
 
-## 6.4 切分方式
+## 6.4 切分方式 已完成标记
 
 必须 WSI-level split。
 
@@ -659,6 +767,27 @@ medium-only
 manual prompt-size rule
 learned scale selector
 oracle best scale
+```
+
+最终五折 WSI-level 结果（pixel-level 主指标）：
+
+```text
+fixed small PixelDice: 0.4284
+fixed medium PixelDice: 0.4072
+fixed large PixelDice: 0.3700
+best learned selector: GBDT / formal pixel-Dice label
+  PixelDice: 0.4293
+  Pixel mIoU: 0.2933
+  scale accuracy: 0.6261
+  macro F1: 0.3286
+```
+
+selector 的提升相对 fixed small 只有 0.0009；它是一个已验证的基线模块，但不是当前主要性能瓶颈。正式模型和 OOF 结果位于：
+
+```bash
+scale_selection/scale_selector_model.pkl
+scale_selection/scale_selector_oof_predictions.csv
+scale_selection/scale_selector_results.csv
 ```
 
 ---
