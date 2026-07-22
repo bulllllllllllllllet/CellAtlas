@@ -1,0 +1,26 @@
+project: {name: phase4_cross_scale, seed: 20260719}
+data:
+  ignore_index: 255
+  class_count: 12
+  top_k_parents: 4
+  scales: [10x, 5x, 2p5x]
+model:
+  region_dim: 256
+  num_regions: 64
+  num_blocks: 1
+  phase2_checkpoint: /nfs-medical3/zyh/v4/phase2/runs/phase_2_region_encoder_train_20260717_161240/checkpoint_epoch_028.pth
+  phase3_cell_checkpoint: /nfs-medical3/zyh/v4/phase3/runs/phase_3_cell_region_train_20260719_025025/checkpoint_epoch_026.pth
+  freeze_encoders: true
+training:
+  epochs: 30
+  batch_size_per_gpu: 16
+  num_workers: 2
+  samples_per_epoch: 20000
+  validation_samples: 4000
+  lr: 0.001
+  weight_decay: 0.0001
+  max_grad_norm: 5.0
+  amp_dtype: bfloat16
+output:
+  root: /nfs-medical3/zyh/v4/phase4/runs
+  data_root: /nfs-medical3/zyh/v4/phase4/data

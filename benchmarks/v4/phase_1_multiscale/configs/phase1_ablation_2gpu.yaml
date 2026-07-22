@@ -1,0 +1,67 @@
+project:
+  name: phase1_multiscale_fair_ablation_2gpu
+  seed: 20260714
+data:
+  common_root: /nfs-medical/vipa-medical/2024.8.12广东省人民医院移动硬盘数据/结直肠癌/结直肠癌组织分割和细胞核分割
+  pairs_csv: benchmarks/v4/data_preprocess/gdph_tissue_nuclei_pairs.csv
+  class_map:
+    - {id: 0, name: tumor_epithelium, rgb: [230, 0, 18]}
+    - {id: 1, name: tumor_stroma, rgb: [243, 152, 0]}
+    - {id: 2, name: background, rgb: [255, 255, 255]}
+    - {id: 3, name: necrosis, rgb: [134, 32, 127]}
+    - {id: 4, name: normal_gland, rgb: [255, 241, 0]}
+    - {id: 5, name: normal_stroma, rgb: [0, 160, 233]}
+    - {id: 6, name: submucosa_serosa, rgb: [143, 195, 31]}
+    - {id: 7, name: muscle, rgb: [34, 172, 56]}
+    - {id: 8, name: lymphocyte_aggregate, rgb: [0, 71, 157]}
+    - {id: 9, name: mucus, rgb: [0, 158, 150]}
+    - {id: 10, name: fat, rgb: [170, 170, 170]}
+    - {id: 11, name: blood, rgb: [228, 0, 127]}
+  background_class_ids: [2]
+  ignore_index: 255
+  unknown_color_policy: ignore
+  patch_size: 512
+  index_stride: 512
+  min_valid_fraction: 0.50
+  min_tissue_fraction: 0.30
+  target_magnification: 10
+split:
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  group_key: patient_id
+  patient_id_policy: wsi_id_confirmed_by_user
+sampling:
+  group_ratios:
+    class_interior: 0.30
+    class_boundary: 0.30
+    rare_class: 0.30
+    background_or_hard_negative: 0.10
+  rare_class_max_train_fraction: 0.02
+  boundary_fraction_threshold: 0.02
+  special_class_ids: []
+model:
+  name: deeplabv3_resnet50
+  pretrained_weights: /nfs-medical3/zyh/v4/phase1/models/deeplabv3_resnet50_coco-cd0a2569.pth
+training:
+  epochs: 30
+  # Two GPUs per ablation; 16 x 2 preserves the global batch of 32 used by the 4-GPU run.
+  batch_size_per_gpu: 16
+  num_workers: 2
+  samples_per_epoch: 20000
+  validation_samples_per_epoch: 4000
+  lr: 0.0001
+  weight_decay: 0.0001
+  amp: true
+  grad_accum_steps: 1
+  ce_weight: 0.5
+  dice_weight: 1.0
+  warmup_epochs: 2
+output:
+  root: /nfs-medical3/zyh/v4/phase1/runs
+development_cohort:
+  wsi_count: 200
+  split_counts: {train: 140, val: 30, test: 30}
+  cohort_manifest: /nfs-medical3/zyh/v4/phase1/data/cohort200_20260716_010810/cohort_manifest.parquet
+  tiled_gt_manifest: /nfs-medical3/zyh/v4/phase1/data/tiled_gt_cohort200_20260716_011804/tiled_gt_manifest.parquet
+  tiled_patch_index: /nfs-medical3/zyh/v4/phase1/data/tiled_patch_index_cohort200_20260716_013248/patch_index_10x_tiled_gt.parquet

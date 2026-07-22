@@ -1,0 +1,9 @@
+project: {name: phase3_cell_region_10x, seed: 20260719}
+data: {max_cells_per_patch: 255, cell_feature_dim: 74, ignore_index: 255, class_count: 12}
+model:
+  phase2_checkpoint: /nfs-medical3/zyh/v4/phase2/runs/phase_2_region_encoder_train_20260717_161240/checkpoint_epoch_028.pth
+  region_dim: 256
+  num_regions: 64
+  freeze_phase2: true
+training: {epochs: 30, batch_size_per_gpu: 4, num_workers: 2, samples_per_epoch: 20000, validation_samples: 4000, lr: 0.001, weight_decay: 0.0001, max_grad_norm: 5.0, amp_dtype: bfloat16}
+output: {root: /nfs-medical3/zyh/v4/phase3/runs}

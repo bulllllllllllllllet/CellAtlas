@@ -1,0 +1,21 @@
+project:
+  name: phase3_cell_to_region
+  seed: 20260717
+data:
+  max_cells_per_patch: 255  # fixed XCellFormer token contract
+  cell_feature_dim: 74  # [x,y,log1p(area),one-hot nuclei class (7)] + XCellFormer reg-64
+  cell_class_count: 7  # 0 background/unknown plus six GDPH nuclei classes
+  cell_representation: xcellformer_reg64_with_metadata
+model:
+  phase2_checkpoint: /nfs-medical3/zyh/v4/phase2/runs/phase_2_region_encoder_train_20260717_161240/checkpoint_epoch_028.pth
+  region_dim: 256
+  num_regions: 64
+  freeze_phase2: true
+training:
+  batch_size_per_gpu: 4
+  num_workers: 2
+  amp_dtype: bfloat16
+  region_head_lr: 0.001
+  epochs: 30
+output:
+  root: /nfs-medical3/zyh/v4/phase3/runs

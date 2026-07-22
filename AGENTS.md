@@ -74,6 +74,24 @@ result = engine.predict(image_source, max_cells=512)
 - CTransPath weights **must** be placed at `module/checkpoint/ctranspath.pth`
 - Cache `.pkl` keys: `features` `[1, 255, D]`, `mask` `[1, 255]`, `cell_masks` `[H, W]`
 
+## V4 Workflow
+
+Six modules (phase1–phase6) from `benchmarks/v4/first_talk.md`:
+1. **Multi-scale WSI pyramid** — three physical scales (10x/5x/2.5x) or receptive fields (1024/2048/4096)
+2. **Deep regionization** — learnable soft region assignment + pixel features → region tokens
+3. **Cell-aware region tokens** — inject cell embeddings into regions via attention pooling
+4. **Cross-scale interaction** — hierarchical graph message passing between fine/middle/coarse regions
+5. **Prompt encoder** — set encoder for positive/negative prompts → task token
+6. **Context-aware mask decoder** — sparse graph Transformer → region probability → pixel mask
+
+Training stages (from `first_talk.md` §5):
+- Stage 0: Diagnose current failures (oracle Dice, purity, etc.)
+- Stage 1: Train deep regionization (pseudo-label from SLIC + boundary/compactness/purity loss)
+- Stage 2: Train region representation (region classification + contrastive + retrieval)
+- Stage 3: Train cross-scale interaction
+- Stage 4: Prompt-conditioned episodic training
+- Stage 5: End-to-end joint fine-tuning
+
 ## Key Files
 
 | File | Purpose |

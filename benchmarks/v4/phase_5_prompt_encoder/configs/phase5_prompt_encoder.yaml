@@ -1,0 +1,20 @@
+project: {name: phase5_prompt_encoder, seed: 20260720}
+data:
+  ignore_index: 255
+  class_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+  centroid_knn: 4
+  size_probabilities: {point: 0.40, small: 0.35, large: 0.25}
+  group_probabilities: {class_interior: 0.30, class_boundary: 0.30, rare_class: 0.30, background_or_hard_negative: 0.10}
+model: {region_dim: 256, heads: 4, set_layers: 2, dropout: 0.10}
+loss: {dice_weight: 1.0, ranking_weight: 0.2, ranking_margin: 0.2}
+training:
+  epochs: 30
+  batch_size_per_gpu: 32
+  num_workers: 2
+  samples_per_epoch: 20000
+  validation_samples: 4000
+  lr: 0.001
+  weight_decay: 0.0001
+  max_grad_norm: 5.0
+  amp_dtype: bfloat16
+output: {root: /nfs-medical3/zyh/v4/phase5/runs}

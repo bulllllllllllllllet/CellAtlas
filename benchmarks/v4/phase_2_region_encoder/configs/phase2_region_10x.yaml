@@ -1,0 +1,40 @@
+project: {name: phase2_deep_region_10x, seed: 20260714}
+data:
+  ignore_index: 255
+  background_class_ids: [2]
+  class_map:
+    - {id: 0, name: tumor_epithelium, rgb: [230, 0, 18]}
+    - {id: 1, name: tumor_stroma, rgb: [243, 152, 0]}
+    - {id: 2, name: background, rgb: [255, 255, 255]}
+    - {id: 3, name: necrosis, rgb: [134, 32, 127]}
+    - {id: 4, name: normal_gland, rgb: [255, 241, 0]}
+    - {id: 5, name: normal_stroma, rgb: [0, 160, 233]}
+    - {id: 6, name: submucosa_serosa, rgb: [143, 195, 31]}
+    - {id: 7, name: muscle, rgb: [34, 172, 56]}
+    - {id: 8, name: lymphocyte_aggregate, rgb: [0, 71, 157]}
+    - {id: 9, name: mucus, rgb: [0, 158, 150]}
+    - {id: 10, name: fat, rgb: [170, 170, 170]}
+    - {id: 11, name: blood, rgb: [228, 0, 127]}
+model:
+  # Initialised from the selected Phase 1 10x-only checkpoint.
+  pretrained_weights: /nfs-medical3/zyh/v4/phase1/runs/phase_1_multiscale_train_ablation_10x_20260717_015624/best_checkpoint.pth
+  num_regions: 64
+  embedding_dim: 256
+  spatial_temperature: 0.08
+training:
+  epochs: 30
+  batch_size_per_gpu: 8
+  num_workers: 2
+  samples_per_epoch: 20000
+  validation_samples_per_epoch: 4000
+  validation_samples_per_epoch: 4000
+  pretrained_lr: 0.00001
+  region_head_lr: 0.001
+  weight_decay: 0.0001
+  max_grad_norm: 5.0
+  amp: true
+  amp_dtype: bfloat16
+  slic_hold_epochs: 5
+  slic_decay_epochs: 15
+  loss_weights: {slic: 1.0, boundary: 1.0, balance: 0.50, compact: 0.10, purity: 0.25, semantic_ce: 0.5, semantic_dice: 1.0}
+output: {root: /nfs-medical3/zyh/v4/phase2/runs}

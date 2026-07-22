@@ -1,0 +1,54 @@
+project: {name: phase6_joint_pixel, seed: 20260720}
+data:
+  ignore_index: 255
+  class_ids: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+  centroid_knn: 4
+  max_cells_per_patch: 255
+  cell_feature_dim: 74
+  size_probabilities: {point: 0.40, small: 0.35, large: 0.25}
+  group_probabilities: {class_interior: 0.30, class_boundary: 0.30, rare_class: 0.30, background_or_hard_negative: 0.10}
+model:
+  region_dim: 256
+  graph_heads: 4
+  graph_layers: 2
+  graph_neighbours: 6
+  graph_dropout: 0.10
+  residual_limit: 1.0
+  train_phase2_embedding: true
+  train_phase2_assignment: true
+  train_cell: false
+  train_prompt: false
+loss:
+  weights:
+    pixel_bce: 1.0
+    pixel_dice: 1.0
+    pixel_boundary: 0.10
+    region_aux: 0.25
+    region_ranking: 0.0
+    assignment_balance: 0.01
+    assignment_entropy: 0.001
+    assignment_compactness: 0.01
+  region_ranking_margin: 0.2
+training:
+  epochs: 30
+  batch_size_per_gpu: 2
+  num_workers: 2
+  samples_per_epoch: 20000
+  validation_samples: 4000
+  decoder_lr: 0.0001
+  phase2_embedding_lr: 0.00001
+  phase2_assignment_lr: 0.00005
+  weight_decay: 0.0001
+  max_grad_norm: 5.0
+  amp_dtype: bfloat16
+output: {root: /nfs-medical3/zyh/v4/phase6/joint_runs}
+checkpoint_selection:
+  dice_reference: {pixel_macro_dice: 0.7448664616581842, pixel_micro_dice: 0.8031562685403799}
+  hard_gates:
+    pixel_macro_dice_min: 0.72
+    pixel_micro_dice_min: 0.7987
+  soft_targets:
+    region_macro_dice_min: 0.84
+    unprompted_macro_dice_min: 0.81
+    boundary_f1_min: 0.2867
+    prompt_conflict_episode_rate_max: 0.07

@@ -16,7 +16,7 @@
 
 \setcounter{secnumdepth}{0}
 
-\title{CellAtlas-MPS: Multi-Scale Prompt-Aware Superpixel Segmentation for Histopathology}
+\title{}
 \author{Anonymous Submission}
 \affiliations{}
 
@@ -25,16 +25,12 @@
 \maketitle
 
 \begin{abstract}
-Interactive tissue segmentation in hematoxylin and eosin whole-slide images requires models that can follow user intent while remaining robust to heterogeneous tissue morphology and annotation scale. We introduce CellAtlas-MPS, a multi-scale prompt-aware superpixel framework for prompt-conditioned histopathology segmentation. Instead of treating a prompt as a global image-level query or converting retrieval scores to masks with hand-tuned thresholds, CellAtlas-MPS represents each slide as a hierarchy of cell-informed superpixel graphs, maps positive and negative prompts to region tokens, selects the appropriate operating scale for each query, and decodes calibrated superpixel probabilities with local graph context. The framework preserves the interpretability and efficiency of region-level retrieval while turning prompt responses into spatially coherent tissue masks.
+
 \end{abstract}
 
 \section{Introduction}
 
-Accurate tissue segmentation in hematoxylin and eosin (H\&E) whole-slide images is a fundamental step for computational pathology. In practice, however, the target tissue concept is often study-dependent: the same image may be queried for tumor epithelium, necrotic regions, mucus, smooth muscle, or other structures depending on the downstream analysis. Fully supervised semantic segmentation requires dense class annotations and fixes the label space in advance, while purely retrieval-based systems provide useful region ranking but still require manual score thresholds and post-processing to obtain masks.
 
-Promptable segmentation offers a more flexible interface because a user can specify the current target with positive and negative examples. Histopathology presents two difficulties that are less prominent in natural images. First, the spatial scale of the prompt varies substantially: a small clean prompt is useful for boundary-sensitive structures, whereas a broad prompt may better capture large homogeneous tissue. Second, tissue appearance is strongly contextual. Regions with similar color or texture may correspond to different tissue types depending on neighboring cells, glands, and stromal organization. A fixed-scale prompt retrieval method therefore tends to be sensitive to prompt size, negative examples, and manually chosen thresholds.
-
-We address these issues with CellAtlas-MPS, a multi-scale prompt-aware superpixel framework. The key idea is to keep the segmentation unit interpretable and compact by operating on superpixels, but to make the prompt-to-mask conversion adaptive. The method constructs cell-informed region tokens at multiple scales, performs positive-negative prompt retrieval on each scale, learns a query-specific scale selector, and decodes superpixel probabilities with either an MLP decoder or a graph refiner. This design separates three decisions that are usually entangled in interactive tissue segmentation: which spatial scale should be used, how retrieval scores should be calibrated into probabilities, and how local tissue continuity should refine the final mask.
 
 \section{Method}
 
