@@ -1,0 +1,4 @@
+interface:
+  display_name: "V4 Workflow"
+  short_description: "CellAtlas v4 six-phase high-performance workflow"
+  default_prompt: "Use $v4-workflow to implement or validate a CellAtlas v4 phase."
