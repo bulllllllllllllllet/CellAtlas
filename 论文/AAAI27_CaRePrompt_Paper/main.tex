@@ -267,6 +267,7 @@ The mask decoder operates on a sparse graph whose edges connect spatial neighbor
 \begin{equation}
     \hat{M}(x)=\sum_{k=1}^{K_f}A_f(x,k)p_k.
 \end{equation}
+This projection also couples pixel supervision to region geometry during joint fine-tuning. When the differentiable region-assignment pathway is trainable, the pixel loss differentiates through $\hat{M}$ with respect to $A_f(x,k)$ as well as $p_k$. Thus, if a boundary pixel is consistently assigned to a region with an incompatible target probability, its error can increase the membership of a better-matched region and decrease the competing membership, shifting the soft region boundary toward the tissue contour rather than only changing region scores. Prompt--region associations and region targets are recomputed from the current assignment at every iteration, while balance, entropy, compactness, and prompt-geometry constraints regularize this update and prevent degenerate boundary drift. When this pathway is frozen, the decoder instead refines only $p_k$ over fixed regions.
 This direct probability prediction avoids rank cutoffs, classwise area priors, and manually chosen score-to-mask rules. We use a single threshold of $0.5$ at inference. If positive and negative prompts collapse onto the same hard region, the model abstains and requests a refined interaction instead of silently returning an ambiguous mask.
 
 \subsection{Staged Episodic Optimization}
