@@ -47,6 +47,12 @@ class FixedSLICAdapter(BaselineAdapter):
         features /= scale
         positive = self._prompt_segments(labels, request.positive_points)
         negative = self._prompt_segments(labels, request.negative_points) if len(request.negative_points) else np.empty(0, np.int64)
+        if np.intersect1d(positive, negative).size:
+            empty = np.zeros(labels.shape, dtype=np.float32)
+            return Prediction(
+                probability=empty, binary_mask=empty.astype(bool), status="abstained",
+                candidates={"selection_rule": "prompt_segment_conflict_abstention"},
+            )
         positive_distance = ((features[:, None] - features[positive][None]) ** 2).mean(2).min(1)
         if len(negative):
             negative_distance = ((features[:, None] - features[negative][None]) ** 2).mean(2).min(1)
@@ -64,4 +70,3 @@ class FixedSLICAdapter(BaselineAdapter):
                 "num_segments": count,
             },
         )
-

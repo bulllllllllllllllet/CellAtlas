@@ -1,5 +1,8 @@
 \documentclass[letterpaper]{article} % DO NOT CHANGE THIS
 \usepackage[submission]{aaai2027}  % DO NOT CHANGE THIS
+% The serif, sans-serif, and monospaced fonts are loaded automatically by
+% aaai2027.sty (newtxtext, helvet, courier). DO NOT add \usepackage{times},
+% \usepackage{helvet}, \usepackage{courier}, or any other font package.
 \usepackage[hyphens]{url}  % DO NOT CHANGE THIS
 \usepackage{graphicx} % DO NOT CHANGE THIS
 \urlstyle{rm} % DO NOT CHANGE THIS
@@ -7,225 +10,287 @@
 \usepackage{natbib}  % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
 \usepackage{caption} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
 \frenchspacing  % DO NOT CHANGE THIS
+%
+% These are recommended to typeset algorithms but not required. See the subsubsection on algorithms. Remove them if you don't have algorithms in your paper.
+% \usepackage{algorithm}
+% \usepackage{algorithmic}
+
+%
+% These are recommended to typeset listings but not required. See the subsubsection on listing. Remove this block if you don't have listings in your paper.
+% \usepackage{newfloat}
+% \usepackage{listings}
+% \DeclareCaptionStyle{ruled}{labelfont=normalfont,labelsep=colon,strut=off} % DO NOT CHANGE THIS
+% \lstset{%
+% 	basicstyle={\footnotesize\ttfamily},% footnotesize acceptable for monospace
+% 	numbers=left,numberstyle=\footnotesize,xleftmargin=2em,% show line numbers, remove this entire line if you don't want the numbers.
+% 	aboveskip=0pt,belowskip=0pt,%
+% 	showstringspaces=false,tabsize=2,breaklines=true}
+% \floatstyle{ruled}
+% \newfloat{listing}{tb}{lst}{}
+% \floatname{listing}{Listing}
+
+%
+% Recommended for better-looking tables
 \usepackage{booktabs}
 \usepackage{amsmath,amssymb}
 
+%
+% Keep the \pdfinfo as shown here. There's no need
+% for you to add the /Title and /Author tags.
 \pdfinfo{
 /TemplateVersion (2027.1)
 }
 
-\setcounter{secnumdepth}{0}
+% DISALLOWED PACKAGES
+% \usepackage{authblk} -- This package is specifically forbidden
+% \usepackage{balance} -- This package is specifically forbidden
+% \usepackage{CJK} -- This package is specifically forbidden
+% \usepackage{float} -- This package is specifically forbidden
+% \usepackage{flushend} -- This package is specifically forbidden
+% \usepackage{fullpage} -- This package is specifically forbidden
+% \usepackage{geometry} -- This package is specifically forbidden
+% \usepackage{hyperref} -- This package is specifically forbidden
+% \usepackage{navigator} -- This package is specifically forbidden
+% (or any other package that embeds links such as navigator or hyperref)
+% \usepackage{indentfirst} -- This package is specifically forbidden
+% \usepackage{layout} -- This package is specifically forbidden
+% \usepackage{multicol} -- This package is specifically forbidden
+% \usepackage{nameref} -- This package is specifically forbidden
+% \usepackage{savetrees} -- This package is specifically forbidden
+% \usepackage{setspace} -- This package is specifically forbidden
+% \usepackage{stfloats} -- This package is specifically forbidden
+% \usepackage{tabu} -- This package is specifically forbidden
+% \usepackage{titlesec} -- This package is specifically forbidden
+% \usepackage{tocbibind} -- This package is specifically forbidden
+% \usepackage{ulem} -- This package is specifically forbidden
+% \usepackage{wrapfig} -- This package is specifically forbidden
+% DISALLOWED COMMANDS
+% \nocopyright -- Your paper will not be published if you use this command
+% \addtolength -- This command may not be used
+% \balance -- This command may not be used
+% \baselinestretch -- Your paper will not be published if you use this command
+% \clearpage -- No page breaks of any kind may be used for the final version of your paper
+% \columnsep -- This command may not be used
+% \newpage -- No page breaks of any kind may be used for the final version of your paper
+% \pagebreak -- No page breaks of any kind may be used for the final version of your paper
+% \pagestyle -- This command may not be used
+% \tiny -- This is not an acceptable font size.
+% \vspace{- -- No negative value may be used in proximity of a caption, figure, table, section, subsection, subsubsection, or reference
+% \vskip{- -- No negative value may be used to alter spacing above or below a caption, figure, table, section, subsection, subsubsection, or reference
 
-\title{}
+\setcounter{secnumdepth}{0} %May be changed to 1 or 2 if section numbers are desired.
+
+% The file aaai2027.sty is the style file for AAAI Press
+% proceedings, working notes, and technical reports.
+%
+
+% Title
+
+% Your title must be in mixed case, not sentence case.
+% That means all verbs (including short verbs like be, is, using,and go),
+% nouns, adverbs, adjectives should be capitalized, including both words in hyphenated terms, while
+% articles, conjunctions, and prepositions are lower case unless they
+% directly follow a colon or long dash
+\title{CaRePrompt: From Cellular Evidence to Hierarchical Region Prompting for Interactive Whole-Slide Tissue Segmentation}
 \author{Anonymous Submission}
 \affiliations{}
+
+% Example, Single Author, ->> remove \iffalse,\fi and place them surrounding AAAI title to use it
+\iffalse
+\title{My Publication Title --- Single Author}
+\author{
+    Author Name
+}
+\affiliations{
+    Affiliation\\
+    Affiliation Line 2\\
+    name@example.com
+}
+\fi
+
+% Example, Multiple Authors, ->> remove \iffalse,\fi and place them surrounding AAAI title to use it
+\iffalse
+\title{My Publication Title --- Multiple Authors}
+\author{
+    % Authors
+    First Author Name\textsuperscript{\rm 1,\rm 2}\equalcontrib,
+    Second Author Name\textsuperscript{\rm 2}\equalcontrib,
+    Third Author Name\textsuperscript{\rm 1}\corresponding
+}
+\affiliations{
+    % Affiliations
+    \textsuperscript{\rm 1}Affiliation 1\\
+    \textsuperscript{\rm 2}Affiliation 2\\
+    firstAuthor@affiliation1.com, secondAuthor@affilation2.com, thirdAuthor@affiliation1.com
+}
+\fi
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
+Interactive tissue segmentation in whole-slide images (WSIs) requires models to identify user-specified tissues from sparse visual prompts while integrating information across cellular, regional, and global tissue scales. Existing approaches often rely on fixed patches or handcrafted regions, which may limit their ability to adapt to complex tissue boundaries and capture biological context across different scales.
 
+We present CaRePrompt, a cell-aware hierarchical prompting framework for interactive target-versus-rest tissue segmentation in WSIs. CaRePrompt learns adaptive tissue region representations from multiscale slide features, incorporates cellular information to enhance region-level understanding, and leverages hierarchical contextual reasoning to connect local morphology with broader tissue organization. By conditioning segmentation on positive and negative visual prompts, CaRePrompt enables a unified model to segment user-specified tissues without requiring class-specific fine-tuning.
+
+We evaluate CaRePrompt on patient-separated WSI cohorts under episodic interactive segmentation settings. Experimental results demonstrate that the proposed framework effectively integrates cellular and spatial context, achieving accurate tissue delineation across diverse tissue targets. These findings highlight the potential of cell-aware hierarchical prompting as a general framework for interactive computational pathology.
 \end{abstract}
+
+% Uncomment the following to link to your code, datasets, an extended version or similar.
+% You must keep this block between (not within) the abstract and the main body of the paper.
+% Make sure that you do not de-anonymize yourself with these links.
+% \begin{links}
+%     \link{Code}{https://aaai.org/example/code}
+%     \link{Datasets}{https://aaai.org/example/datasets}
+%     \link{Extended version}{https://aaai.org/example/extended-version}
+% \end{links}
 
 \section{Introduction}
 
+CaRePrompt moves interactive WSI tissue segmentation from prompt matching on isolated pixels or patches to prompt-conditioned reasoning over a cell-aware hierarchy of learned tissue regions. This change addresses a limitation that remains after a user has specified the target: the model must still determine which local structures support that target, how those structures compose into tissue, and where the resulting boundary lies at slide scale. On 4,000 held-out, patient-separated test episodes spanning 12 tissue targets and point, small-region, and large-region interactions, a single CaRePrompt model obtains 0.7392 macro Dice and 0.8128 micro Dice without per-class fine-tuning. These results establish the central contribution first: visual prompts can define a reusable target-versus-rest tissue task when cellular, regional, and slide context are represented within the same prediction pathway.
 
+The corresponding failure occurs at the prompt-to-mask interface. A fine patch can preserve nuclei and narrow boundaries but omit the tissue organization needed to interpret them; a coarse patch can capture that organization while averaging away the cellular evidence that distinguishes visually similar tissues. Fixed patches or precomputed superpixels make this trade-off before seeing the prompt. Even when retrieval identifies relevant regions, converting similarity ranks into a mask introduces a second failure point: classwise thresholds, area priors, or top-percentile rules can change the predicted tissue more than the prompt itself. CaRePrompt shifts both decisions into the model. Differentiable region assignments determine the prediction units, cell attention supplies microscopic evidence, sparse parent--child edges provide multiscale context, and a learned decoder maps signed prompt evidence directly to calibrated region probabilities.
+
+Prior work has solved important parts of this problem, but not their coupling. SAM established promptable segmentation and zero-shot transfer in natural images \cite{kirillov2023segment}, while MedSAM adapted box-prompted segmentation to diverse medical modalities \cite{ma2024medsam}. WSI-SAM further introduced multi-resolution features for prompted histopathology segmentation \cite{liu2024wsisam}. Separately, HIPT showed that the natural WSI pyramid supports hierarchical representation learning \cite{chen2022hipt}, and CellViT demonstrated that transformer-based cellular representations can transfer across histopathology datasets \cite{horst2024cellvit}. These advances provide prompts, multiresolution context, or cellular representations, respectively. The missing step is to make them interact at the same learned tissue regions: cellular evidence should alter region semantics, hierarchy should connect those regions across physical scales, and positive and negative prompts should jointly define the binary tissue query rather than select a fixed class head.
+
+Our contributions follow this missing computation and are paired with explicit experimental checks:
+
+\noindent\textbf{Adaptive region-to-pixel prediction.}
+We couple differentiable tissue regions with a context-aware region-to-pixel decoder, replacing retrieval cutoffs with soft probability projection. In a controlled 4,000-episode validation comparison under dynamic online region targets, this change raises pixel macro Dice from 0.7212 to 0.7316 and Boundary F1 from 0.2287 to 0.2878.
+
+\noindent\textbf{Cell-aware signed prompting.}
+We introduce cell-aware region tokens and a signed set encoder that represents multiple positive and negative prompts without reducing each set to a fixed mean prototype. Controlled 360-episode ablations isolate the two effects: adding the cell branch changes macro/micro Dice by $+0.00013/-0.00007$, while adapting the prompt matcher changes them by $-0.00122/+0.00134$ relative to the frozen-geometry decoder baseline. The mixed directions keep the claim scoped to complementary evidence rather than uniform improvement.
+
+\noindent\textbf{Sparse hierarchical context.}
+We connect aligned fine, middle, and coarse regions through a zero-gated sparse hierarchy, so broader context can be added without perturbing the pretrained fine representation at initialization. A paired 4,000-episode comparison with 10,000 bootstrap resamples measures a macro Dice change of $+0.00018$ and a micro Dice change of $-0.00098$; the latter does not establish the prespecified non-inferiority margin. We therefore report hierarchical interaction as a tested architectural contribution and retain the fine-scale model as the performance-selected primary route, rather than claiming an unsupported universal gain.
+
+\noindent\textbf{Episodic target-versus-rest learning.}
+We train the complete prediction pathway episodically across changing target tissues and evaluate it once after patient-separated model selection. On the frozen test set, the final model improves macro/micro Dice over its preceding prompt-conditioned checkpoint by $+0.00126/+0.00285$, improves 7 of 12 tissue targets, and preserves a single inference threshold of 0.5. This experiment directly tests the intended setting: one model, heterogeneous visual prompts, and no class-specific fine-tuning at inference.
+
+\section{Related Work}
+
+\subsection{Interactive and Promptable Segmentation}
+
+Interactive segmentation first encoded user intent through task-specific spatial cues. DEXTR transforms four extreme clicks into an additional image channel for class-agnostic object segmentation \cite{maninis2018dextr}, while FocalClick performs coarse target localization and focused correction to update a mask efficiently from positive and negative clicks \cite{chen2022focalclick}. Foundation models broadened this interface: SAM accepts points, boxes, and masks for promptable segmentation in natural images \cite{kirillov2023segment}, and MedSAM adapts box prompting to medical images at scale \cite{ma2024medsam}. In pathology, WSI-SAM incorporates multi-resolution features into a SAM-based model for whole-slide segmentation \cite{liu2024wsisam}. These methods establish effective prompt-to-mask prediction, but their interaction is primarily resolved within image- or feature-level decoders. CaRePrompt instead uses the prompt to query learned tissue regions whose semantics are jointly determined by cells and cross-scale context.
+
+\subsection{Multiscale Whole-Slide Representation}
+
+WSI analysis commonly separates local feature extraction from broader contextual aggregation. HistoSegNet derives tissue-type maps from patch supervision, class activation maps, and spatial post-processing \cite{chan2019histosegnet}. HIPT organizes nested WSI tiles into a hierarchical self-supervised Transformer to connect local and slide-level representations \cite{chen2022hipt}. More recently, Prov-GigaPath models tens of thousands of tile tokens with a long-context slide encoder and large-scale whole-slide pretraining \cite{xu2024gigapath}. These approaches demonstrate that physical scale and slide context are essential, but they primarily learn representations for predefined tissue labels or slide-level endpoints. Our setting is different: the output class is specified at interaction time, so multiscale information must be routed into a dense target-versus-rest mask conditioned on the current positive and negative evidence.
+
+\subsection{Learned Regions and Cellular Context}
+
+Region-based models reduce dense images to structured prediction units. Superpixel Sampling Networks make superpixel assignment differentiable and allow downstream losses to learn task-specific regions \cite{jampani2018ssn}. Computational pathology adds biologically meaningful entities to this abstraction. HoVer-Net jointly segments and classifies nuclei across multiple tissues \cite{graham2019hover}, and CellViT learns transformer-based cellular representations that transfer across histopathology datasets \cite{horst2024cellvit}. HACT-Net goes further by connecting cell and tissue graphs in a hierarchical representation for breast cancer classification \cite{pati2022hact}. These works motivate both adaptive regions and cell-to-tissue structure. CaRePrompt combines them for a distinct prediction interface: soft tissue regions receive cellular evidence, exchange sparse context across aligned physical scales, and remain directly addressable by signed prompts before their probabilities are projected back to pixels.
 
 \section{Method}
 
-\subsection{Problem Formulation}
+\subsection{Problem Formulation and Overview}
 
-Given a hematoxylin and eosin (H\&E) whole-slide image or its 10$\times$ representation, we denote the image domain by $\Omega \subset \mathbb{R}^{2}$. A user interaction consists of positive and negative prompts,
+Let $I$ denote an H\&E WSI and $\Omega$ its pixel domain at the reference resolution. An interaction provides a set of positive prompts $\mathcal{P}^{+}$ and negative prompts $\mathcal{P}^{-}$, where each prompt may be a point, box, scribble, or partial region. The prompts specify a visual concept rather than a predefined semantic label. CaRePrompt therefore learns a target-versus-rest mapping
 \begin{equation}
-    \mathcal{P}^{+}=\{p_i^{+}\}_{i=1}^{N_{+}}, \qquad
-    \mathcal{P}^{-}=\{p_j^{-}\}_{j=1}^{N_{-}},
+    f_{\theta}(I,\mathcal{P}^{+},\mathcal{P}^{-}) = \hat{M},
+    \qquad \hat{M}\in[0,1]^{|\Omega|},
 \end{equation}
-where each prompt can be a box, a local region, or the set of superpixels covered by the prompted area. For a target tissue class $c$, interactive tissue segmentation is formulated as a target-versus-rest binary prediction task:
+where $\hat{M}$ is the probability mask of the tissue indicated by the current interaction. A single model is trained across changing target classes and can answer a new query without class-specific fine-tuning.
+
+CaRePrompt represents the slide as a hierarchy of learned tissue regions. Spatially aligned views first provide complementary morphology at fine, middle, and coarse scales. A differentiable region encoder converts dense features into soft regions; a cell branch then injects cellular evidence into their tokens. Sparse parent--child interactions connect local morphology to broader tissue organization. Finally, a signed prompt encoder defines the target concept, and a context-aware decoder predicts region probabilities that are projected back to the pixel grid.
+
+\subsection{Multiscale Deep Regionization}
+
+For each sampled location, we extract aligned views $\{I_s\}_{s\in\mathcal{S}}$ with $\mathcal{S}=\{f,m,c\}$ denoting fine, middle, and coarse scales. These views share a center but cover progressively larger physical fields of view. Thus, the fine view preserves cellular morphology and narrow boundaries, while the coarser views capture glands, tissue composition, and global organization without assigning any tissue class to a fixed scale.
+
+At scale $s$, an image encoder produces a dense feature map $F_s\in\mathbb{R}^{H_s\times W_s\times d}$. A region-assignment head predicts $K_s$ soft regions,
 \begin{equation}
-    f_{\theta}(I,\mathcal{P}^{+},\mathcal{P}^{-},c) \rightarrow M_c,
+    A_s(x,k)=
+    \frac{\exp(a_s(x,k))}
+    {\sum_{j=1}^{K_s}\exp(a_s(x,j))},
 \end{equation}
-where $I$ is the H\&E image and $M_c \in [0,1]^{|\Omega|}$ is the target probability mask. Different queries are allowed to produce overlapping masks because the task is defined by the user's current intent rather than by a single mutually exclusive semantic partition.
-
-A region-retrieval baseline provides interpretable prompt responses over H\&E superpixels, but its final mask generation depends on a fixed scale, manually selected thresholds, and empirical score-to-mask conversion. We therefore introduce CellAtlas-MPS, a multi-scale prompt-aware superpixel framework that preserves the stable region-token representation while learning or calibrating three operations that were previously hand designed: prompt scale selection, score-to-mask decoding, and graph-based region refinement.
-
-\subsection{Framework Overview}
-
-CellAtlas-MPS contains five stages. First, each H\&E image is partitioned into superpixels at three scales, denoted by small, medium, and large, and each superpixel is encoded as a region token. Second, positive and negative prompts are mapped to scale-specific superpixel sets to form a prompt task. Third, prompt retrieval is performed independently at each scale to obtain positive scores, negative scores, and final retrieval responses for all candidate superpixels. Fourth, a Prompt Scale Selector predicts the scale most suitable for the current query from prompt geometry, prompt purity, and score-distribution statistics. Finally, a Prompt-conditioned Mask Decoder or Graph Refiner converts region tokens, prompt scores, and spatial context into superpixel-level probabilities that are projected back to the pixel grid.
-
-The overall computation is summarized as
+where $A_s(x,k)$ is the membership of pixel $x$ in region $k$. The corresponding region token is obtained by normalized soft pooling,
 \begin{equation}
-\begin{aligned}
-    I \rightarrow \{\mathcal{G}^{s}\}_{s \in \mathcal{S}}
-    \rightarrow \{Z^{s}, A^{s}\}_{s \in \mathcal{S}}
-    \rightarrow \{R^{s}(q)\}_{s \in \mathcal{S}}\\
-    \rightarrow \hat{s}
-    \rightarrow \hat{M}_{q}.
-\end{aligned}
+    r_{s,k}=
+    \frac{\sum_x A_s(x,k)F_s(x)}
+    {\sum_x A_s(x,k)+\varepsilon}.
 \end{equation}
-where $\mathcal{S}=\{\mathrm{small},\mathrm{medium},\mathrm{large}\}$, $\mathcal{G}^{s}$ is the superpixel graph at scale $s$, $Z^{s}$ is the region-token matrix, $A^{s}$ is the superpixel adjacency edge list, $R^{s}(q)$ is the retrieval response for query $q$, $\hat{s}$ is the selected scale, and $\hat{M}_{q}$ is the predicted mask.
+Unlike fixed superpixels, both the region boundaries and their representations receive gradients from the downstream task. Region pretraining begins from conventional over-segmentation as weak geometric supervision, while boundary, compactness, balance, and semantic-purity objectives prevent fragmented or collapsed assignments. Subsequent episodic training can then move region boundaries toward structures that are useful for prompt-conditioned segmentation.
 
-\subsection{Prompt-Task Construction}
+\subsection{Cell-Aware Region Representation}
 
-Each whole-slide image is represented by a unified set of tissue annotations, nucleus maps, cell-level features, cell coordinates, cell polygons, superpixel partitions, and prompt records. Our benchmark contains 20 H\&E slides with tissue masks, cell features, cell coordinates, medium-scale superpixels, and region tokens. A total of 1,161 high-purity prompt records are derived from annotated tissue regions and used as expert prompts.
+Macroscopic appearance alone can be ambiguous in H\&E images; regions with similar color and texture may contain different cellular populations. We therefore associate each detected cell $i$ with its coordinate $u_i$ and embedding $z_i$. The soft assignment evaluated at $u_i$ determines which regions may receive its evidence. For region $(s,k)$, attention pooling is defined as
+\begin{align}
+    e_{s,k,i} & =
+    \frac{(W_q r_{s,k})^{\top}(W_k z_i)}{\sqrt{d}}, \\
+    \alpha_{s,k,i} & =
+    \frac{A_s(u_i,k)\exp(e_{s,k,i})}
+    {\sum_j A_s(u_j,k)\exp(e_{s,k,j})+\varepsilon}, \\
+    c_{s,k} & = \sum_i \alpha_{s,k,i}W_v z_i.
+\end{align}
+This construction uses the region appearance to select informative cells while retaining cell density and summary statistics as explicit evidence. A learned fusion layer combines $r_{s,k}$, $c_{s,k}$, and these statistics into a cell-aware token $\tilde{r}_{s,k}$. It also represents low-cellularity tissue explicitly rather than treating the absence of cells as missing information.
 
-Each training or evaluation example is a prompt segmentation task,
+\subsection{Sparse Hierarchical Region Interaction}
+
+Because the multiscale views are spatially registered, overlap induces parent--child relations between adjacent levels. We retain sparse fine-to-middle and middle-to-coarse edges rather than applying dense attention over all WSI regions. For a parent region $v$, child evidence is aggregated by
 \begin{equation}
-    q=(\mathrm{image\_id}, c, \mathcal{P}^{+}, \mathcal{P}^{-}),
-\end{equation}
-where $c$ is the target tissue class. For a prompt region $B$, its prompt purity is defined as the fraction of valid tissue pixels belonging to the target class:
-\begin{equation}
-    \rho(B,c)=
-    \frac{\sum_{x\in B}\mathbb{I}[Y(x)=c]}
-    {\sum_{x\in B}\mathbb{I}[Y(x)\neq \mathrm{background}] + \epsilon}.
-\end{equation}
-In addition to expert prompts, we construct automatic prompt tasks with clean positives, noisy positives, and hard negatives. Clean positives satisfy $\rho(B,c)\geq0.8$, whereas noisy positives cover $0.5\leq\rho(B,c)<0.8$. Hard negatives are not sampled from random background. Instead, they are selected from non-target regions that are visually or token-wise similar to the target, such as normal glands for tumor epithelium, mucus for necrosis, and submucosa or serosa for muscle.
-
-\subsection{Multi-Scale Superpixels and Region Tokens}
-
-To adapt to different prompt sizes and tissue structures, each image is represented at three superpixel scales:
-\begin{equation}
-    d_{\mathrm{small}}=0.5d_{0}, \quad
-    d_{\mathrm{medium}}=d_{0}, \quad
-    d_{\mathrm{large}}=2d_{0},
-\end{equation}
-where $d_{0}$ is the base region diameter estimated from the 10$\times$ tissue resolution and cell-density statistics. The medium scale serves as the reference partition. The small scale is obtained by locally splitting medium regions to improve boundary granularity, and the large scale is obtained by merging neighboring medium regions to capture larger semantic context. Independent SLIC generation can also be used for scale-specific ablations.
-
-For each image and scale, the region representation includes the 10$\times$ H\&E array, the superpixel map, superpixel metadata, an adjacency edge list $A^s$, base region tokens $Z_{\mathrm{base}}^s$, enhanced region tokens $Z_{\mathrm{enh}}^s$, and ground-truth label statistics. Each superpixel record stores area, centroid, bounding box, cell count, cell density, majority ground-truth label, target-class fraction, label purity, and valid-tissue fraction. The base token concatenates image features, aggregated cell features, and registered cell-context features, resulting in a 274-dimensional representation. The enhanced token further augments the base representation with texture descriptors and cell-statistics features, resulting in a 309-dimensional representation.
-
-For a superpixel $v_k^s$, the base representation is
-\begin{equation}
-    z_k^s =
-    \operatorname{Norm}
-    \left(
-    [\phi_{\mathrm{img}}(v_k^s),\;
-    \phi_{\mathrm{cell}}(v_k^s),\;
-    \phi_{\mathrm{reg}}(v_k^s)]
+    m_v = \operatorname{Attn}\!\left(
+    \tilde{r}_v,
+    \{\tilde{r}_u\}_{u\in\mathcal{C}(v)}
     \right),
 \end{equation}
-where $\phi_{\mathrm{img}}$ is the image feature, $\phi_{\mathrm{cell}}$ is the aggregated cell feature, $\phi_{\mathrm{reg}}$ is the registered cell-expression or morphology-related feature, and $\operatorname{Norm}(\cdot)$ denotes vector normalization. The enhanced token is
+where $\mathcal{C}(v)$ contains its spatially overlapping children. Information is first summarized from fine to middle and then from middle to coarse. The resulting parent and ancestor context is returned to each fine region through a gated residual adapter,
 \begin{equation}
-    \tilde{z}_k^s =
-    \operatorname{Norm}
-    \left(
-    [z_k^s,\phi_{\mathrm{tex}}(v_k^s),\phi_{\mathrm{stat}}(v_k^s)]
-    \right).
+    h_{f,k}=\tilde{r}_{f,k}
+    +\gamma\,\operatorname{HAttn}\!\left(
+    \tilde{r}_{f,k},\tilde{r}_{\pi(k)},\tilde{r}_{\pi^2(k)}
+    \right),
 \end{equation}
+where $\pi(k)$ and $\pi^2(k)$ denote the parent and ancestor regions. The gate $\gamma$ is initialized at zero, allowing hierarchical context to be introduced without perturbing the pretrained fine-scale representation. This sparse exchange lets cellular and boundary evidence constrain large tissue regions while returning broader organization to local predictions.
 
-\subsection{Prompt Retrieval Baseline}
+\subsection{Signed Visual Prompt Encoding}
 
-At each scale $s$, a prompt region is mapped to its covered superpixels. Let $Q^{+,s}$ and $Q^{-,s}$ be the positive and negative prompt-token sets. For a candidate token $z_k^s$, we compute
+Prompts are mapped to the current learned regions by their normalized geometry, so their association remains valid as soft assignments evolve. Let $R^{+}$ and $R^{-}$ be the sets of region tokens covered by positive and negative prompts. Separate permutation-invariant set encoders summarize the two prompt polarities,
 \begin{equation}
-    r_{k,+}^{s}=\max_{u\in Q^{+,s}}\cos(z_k^s,u),
-    \qquad
-    r_{k,-}^{s}=\max_{u\in Q^{-,s}}\cos(z_k^s,u).
+    q^{+}=\operatorname{SetEnc}^{+}(R^{+}),\qquad
+    q^{-}=\operatorname{SetEnc}^{-}(R^{-}),
 \end{equation}
-The final retrieval score is
+and form a task token
 \begin{equation}
-    r_k^{s}=
-    \begin{cases}
-    r_{k,+}^{s}-\lambda r_{k,-}^{s}, & |\mathcal{P}^{-}|>0,\\
-    r_{k,+}^{s}, & |\mathcal{P}^{-}|=0,
-    \end{cases}
+    q=\operatorname{MLP}([q^{+},q^{-},q^{+}-q^{-}]).
 \end{equation}
-where $\lambda=0.5$ by default. This score preserves the interpretability of region retrieval: high-scoring regions are close to positive prompts and suppressed by negative prompts. For each query-scale pair, the retrieval representation contains segment identifiers, positive scores, negative scores, final scores, rank percentiles, superpixel-level soft labels, hard labels, areas, and centroids.
-
-\subsection{Prompt Scale Selector}
-
-A fixed medium scale cannot simultaneously handle small precise prompts and broad semantic prompts. We therefore formulate scale selection as a three-way classification problem:
+This representation supports variable numbers and types of prompts and preserves variation within each set. For every candidate region, cross-attention to $q^{+}$ and $q^{-}$ produces a prompt-conditioned feature, while signed similarity provides an explicit attraction--repulsion cue. The decoder input is
 \begin{equation}
-    g_{\psi}(h_q) \rightarrow \hat{s}\in\{\mathrm{small},\mathrm{medium},\mathrm{large}\},
+    u_k=[h_{f,k},q,h_k^{\mathrm{prm}},s_k^{+}-s_k^{-},g_k],
 \end{equation}
-where $h_q$ contains prompt area, box width and height, aspect ratio, prompt purity, the number of prompt-covered tokens at each scale, and retrieval-score statistics such as score standard deviation and positive-negative score gaps. Training labels are derived from three-scale baseline results:
-\begin{equation}
-    s^{*}=\arg\max_{s\in\mathcal{S}} \operatorname{Dice}_{\mathrm{select}}^{s}(q),
-\end{equation}
-where $\operatorname{Dice}_{\mathrm{select}}$ can be BestDice, classwise top-area Dice, or prompt-adaptive Dice. Since supervision is available at the slide level and prompts from the same slide are correlated, we use lightweight classifiers such as Random Forest, Gradient Boosting, or a small MLP for scale selection.
+where $h_k^{\mathrm{prm}}$ is the cross-attended prompt feature and $g_k$ contains region geometry. During training, targets and prompt-to-region associations are recomputed from the current assignments rather than inherited from a stale region partition.
 
-\subsection{Prompt-Conditioned Mask Decoder}
+\subsection{Context-Aware Mask Decoding}
 
-Prompt retrieval ranks regions but does not directly produce calibrated probabilities. We replace manual thresholding with a Prompt-conditioned Mask Decoder that predicts a target probability for every query-scale-superpixel:
+The mask decoder operates on a sparse graph whose edges connect spatial neighbors and hierarchical relatives. Graph attention propagates local continuity and prompt evidence before a binary head predicts the target probability $p_k=\sigma(o_k)$ for each fine region. The soft region assignments then recover a dense mask:
 \begin{equation}
-    p_k^s = \sigma\left(d_{\omega}(x_k^s;q)\right),
+    \hat{M}(x)=\sum_{k=1}^{K_f}A_f(x,k)p_k.
 \end{equation}
-where $d_{\omega}$ is an MLP and $x_k^s$ concatenates the region token, prompt responses, geometry, and local context:
+This direct probability prediction avoids rank cutoffs, classwise area priors, and manually chosen score-to-mask rules. We use a single threshold of $0.5$ at inference. If positive and negative prompts collapse onto the same hard region, the model abstains and requests a refined interaction instead of silently returning an ambiguous mask.
+
+\subsection{Staged Episodic Optimization}
+
+Training follows the dependency structure of the model. We first learn stable multiscale regions, then optimize cell-aware region representations and hierarchical interactions before introducing prompt-conditioned episodes. Each episode samples a WSI crop, a target tissue, one or more positive prompts, optional hard negative prompts, and the corresponding binary mask. Varying the target across episodes teaches the model to infer the task from visual evidence rather than a fixed output channel.
+
+The joint objective is
 \begin{equation}
 \begin{split}
-    x_k^s=[&z_k^s,\;
-    r_{k,+}^{s}, r_{k,-}^{s}, r_k^s,\;
-    \operatorname{rank}(r_k^s),\;
-    a_k,\bar{x}_k,\bar{y}_k,\\
-    &n_k,\delta_k,\;
-    d_k^{+}, d_k^{-},\;
-    \mu_{\mathcal{N}(k)}(r),\max_{\mathcal{N}(k)}(r),
-    \sigma_{\mathcal{N}(k)}(r)] .
+    \mathcal{L}={}&
+    \mathcal{L}_{\mathrm{BCE}}+lambda_d\mathcal{L}_{\mathrm{Dice}}
+    +\lambda_b\mathcal{L}_{\mathrm{bd}}
+    +\lambda_r\mathcal{L}_{\mathrm{reg}} \\
+    &+\lambda_a\mathcal{L}_{\mathrm{assign}}
+    +\lambda_t\mathcal{L}_{\mathrm{task}},
 \end{split}
 \end{equation}
-Here $a_k$ is the region area, $(\bar{x}_k,\bar{y}_k)$ is the normalized centroid, $n_k$ is the cell count, $\delta_k$ is the cell density, $d_k^{+}$ and $d_k^{-}$ are distances to positive and negative prompts, and $\mathcal{N}(k)$ is the adjacent-superpixel set. The soft label is the target-class fraction within the superpixel:
-\begin{equation}
-\begin{aligned}
-    y_k^s =
-    \frac{\sum_{x\in v_k^s}\mathbb{I}[Y(x)=c]}
-    {\sum_{x\in v_k^s}\mathbb{I}[Y(x)\neq \mathrm{background}] + \epsilon},\\
-    \bar{y}_k^s=\mathbb{I}[y_k^s>0.5].
-\end{aligned}
-\end{equation}
-The decoder is trained with binary cross-entropy and soft Dice losses:
-\begin{equation}
-\begin{aligned}
-    \mathcal{L}_{\mathrm{dec}}=
-    \operatorname{BCEWithLogits}(o,y;\alpha)
-    +\lambda_{\mathrm{dice}}\mathcal{L}_{\mathrm{Dice}},\\
-    \mathcal{L}_{\mathrm{Dice}}=
-    1-\frac{2\sum_k p_k y_k+\epsilon}
-    {\sum_k p_k+\sum_k y_k+\epsilon}.
-\end{aligned}
-\end{equation}
-where $o$ is the logit, $\alpha$ is the positive-class weight, and $\lambda_{\mathrm{dice}}=1.0$ by default.
+where $\mathcal{L}_{\mathrm{reg}}$ supervises online region targets, $\mathcal{L}_{\mathrm{assign}}$ collects balance, entropy, and compactness regularizers, and $\mathcal{L}_{\mathrm{task}}$ preserves the prompt representation during joint adaptation. The pixel BCE and Dice terms optimize the final interaction objective, while the boundary term encourages precise tissue contours. Joint fine-tuning uses conservative updates to the pretrained image encoder and retains the region regularizers to avoid assignment collapse.
 
-\subsection{Graph Refiner}
+% References and End of Paper
+\bibliography{references}
 
-Because tissue regions are spatially coherent, independent MLP predictions can produce isolated false positives or fragmented masks. We therefore refine prompt-conditioned predictions on the superpixel graph. Each node is a superpixel and each edge is a spatial adjacency relation:
-\begin{equation}
-    \mathcal{H}^{(0)} = X^s, \qquad
-    \mathcal{H}^{(\ell+1)}
-    =
-    \operatorname{GraphSAGE}_{\ell}
-    \left(\mathcal{H}^{(\ell)}, A^s\right),
-\end{equation}
-\begin{equation}
-    p_k^s = \sigma\left(W_o h_k^{(L)}+b_o\right).
-\end{equation}
-GraphSAGE is used as the primary graph refiner because it is stable on sparse region graphs and avoids dense adjacency matrices. The graph refiner uses the same node features and labels as the MLP decoder while explicitly aggregating neighborhood context to smooth tissue boundaries and suppress spatially inconsistent predictions.
-
-\subsection{Multi-Scale Fusion}
-
-Scale selection produces a single-scale decision, whereas fusion exploits complementary predictions across all three scales. We compare medium-only retrieval, a manual prompt-size rule, the learned scale selector, score-level fusion, max fusion, and an oracle best scale. For score-level fusion, scale-specific probability maps are projected to the same 10$\times$ image grid and combined as
-\begin{equation}
-\begin{aligned}
-    P(x)=
-    w_{\mathrm{small}}P_{\mathrm{small}}(x)
-    +w_{\mathrm{medium}}P_{\mathrm{medium}}(x)\\
-    +w_{\mathrm{large}}P_{\mathrm{large}}(x),
-    \sum_{s\in\mathcal{S}}w_s=1.
-\end{aligned}
-\end{equation}
-The weights can be derived from the selector probabilities or predicted by a lightweight MLP from query-level features. The non-parametric max-fusion baseline is
-\begin{equation}
-    P(x)=\max_{s\in\mathcal{S}} P_s(x).
-\end{equation}
-
-\section{Experiments}
-
-We evaluate CellAtlas-MPS under WSI-level five-fold cross-validation. With 20 slides, each fold uses 16 training slides, two validation slides, and two test slides. Each fold holds out slides rather than individual prompts, preventing prompts from the same slide from appearing in both training and testing. The evaluation compares medium-scale retrieval, prompt-size heuristic scale selection, learned scale selection, the prompt-conditioned mask decoder, graph refinement, and multi-scale fusion. Expert-prompt and automatically generated prompt settings are reported separately to distinguish user-facing performance from large-scale training behavior.
-
-The primary segmentation metrics are Dice, mean intersection-over-union, Boundary F1, precision, and recall. For retrieval-oriented analysis, we additionally report mean average precision, AUROC, top-$k$ precision, threshold-specific Dice, and BestDice. Scale selection is evaluated by scale accuracy, macro F1, and the Dice score obtained by the selected scale. Ablation studies isolate the effect of region features, prompt composition, scale choice, decoder architecture, graph refinement, and fusion strategy.
-
-\section{Conclusion}
-
-CellAtlas-MPS formulates interactive histopathology segmentation as prompt-conditioned multi-scale superpixel prediction. By combining cell-informed region tokens, adaptive scale selection, calibrated mask decoding, and graph-based refinement, the framework provides an interpretable route from positive-negative prompts to spatially coherent tissue masks.
-
-% Uncomment after adding citations to references.bib.
-% \bibliography{references}
+% Check whether the conference requires a reproducibility checklist to be included in the paper.
+% If so, you can uncomment the following line and adjust the path to include it.
+% \input{ReproducibilityChecklist.tex}
 
 \end{document}

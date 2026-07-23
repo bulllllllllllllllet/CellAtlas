@@ -1,0 +1,34 @@
+expected_episodes: 4000
+reference_method: CaRePrompt J5
+methods:
+  - name: J3
+    metrics: /nfs-medical3/zyh/v4/baseline/careprompt_internal_TIMESTAMP/episode_metrics_TIMESTAMP.parquet
+    prompt: +/- visual
+    multiscale: false
+    cell_aware: true
+  - name: Fixed-SLIC
+    metrics: /nfs-medical3/zyh/v4/baseline/fixed_slic_TIMESTAMP/episode_metrics_TIMESTAMP.parquet
+    prompt: +/- visual
+    multiscale: false
+    cell_aware: false
+  - name: SAM
+    metrics: /nfs-medical3/zyh/v4/baseline/sam_TIMESTAMP/episode_metrics_TIMESTAMP.parquet
+    prompt: point/box
+    multiscale: false
+    cell_aware: false
+  - name: SAM-Med2D
+    metrics: /nfs-medical3/zyh/v4/baseline/sam_med2d_TIMESTAMP/episode_metrics_TIMESTAMP.parquet
+    prompt: point/box
+    multiscale: false
+    cell_aware: false
+  - name: WSI-SAM
+    metrics: /nfs-medical3/zyh/v4/baseline/wsi_sam_TIMESTAMP/episode_metrics_TIMESTAMP.parquet
+    prompt: point/box
+    multiscale: true
+    cell_aware: false
+  - name: CaRePrompt J5
+    metrics: /nfs-medical3/zyh/v4/baseline/careprompt_j5_TIMESTAMP/episode_metrics_TIMESTAMP.parquet
+    prompt: +/- visual
+    multiscale: false
+    cell_aware: true
+

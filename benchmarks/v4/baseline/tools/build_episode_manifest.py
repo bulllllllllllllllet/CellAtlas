@@ -43,8 +43,7 @@ def main() -> None:
         raise ValueError(f"occurrence source misses {sorted(required_source - set(source))}")
     if len(source) != args.expected_episodes:
         raise ValueError(f"occurrence count {len(source)} != expected {args.expected_episodes}")
-    if source["episode_index"].duplicated().any():
-        raise ValueError("formal occurrence source must not duplicate episode_index")
+    repeated_occurrences = int(source["episode_index"].duplicated().sum())
     geometry = pd.read_parquet(args.prompt_geometry)
     required_geometry = {"episode_index", "positive_box_10x", "source_region_ids"}
     if required_geometry - set(geometry):
@@ -58,7 +57,8 @@ def main() -> None:
         cfg["data"]["size_probabilities"], tuple(cfg["data"]["class_ids"]),
         int(cfg["data"]["ignore_index"]), int(cfg["data"]["centroid_knn"]), args.eligibility_index,
     )
-    patches = pd.read_parquet(args.patch_index).query("split == @args.split").set_index("patch_id")
+    patch_frame = pd.read_parquet(args.patch_index)
+    patches = patch_frame[patch_frame["split"] == args.split].set_index("patch_id")
     rows = []
     for order, occurrence in source.iterrows():
         index = int(occurrence.episode_index)
@@ -86,7 +86,7 @@ def main() -> None:
             "target_class": int(item["target_class"]), "prompt_size": str(item["prompt_size"]),
             "positive_points_10x": _json(positive), "negative_points_10x": _json(negative),
             "positive_box_10x": None if box is None or (isinstance(box, float) and np.isnan(box)) else _json(json.loads(box) if isinstance(box, str) else box),
-            "source_region_ids": _json(geo.source_region_ids),
+            "source_region_ids": _json(json.loads(geo.source_region_ids) if isinstance(geo.source_region_ids, str) else geo.source_region_ids),
             **{name: int(patch[name]) for name in ("x_10x", "y_10x", "width_10x", "height_10x", "x_level0", "y_level0", "width_level0", "height_level0")},
             "wsi_path": str(patch.wsi_path), "gt_path": str(patch.gt_path),
         })
@@ -96,6 +96,8 @@ def main() -> None:
     manifest.to_parquet(path, index=False)
     atomic_json(output / f"contract_metadata_{stamp}.json", {
         "timestamp": stamp, "audit": audit, "manifest": str(path), "manifest_sha256": sha256_path(path),
+        "unique_episode_indices": int(source["episode_index"].nunique()),
+        "repeated_occurrences": repeated_occurrences,
         "inputs": {name: {"path": str(value), "sha256": sha256_path(value)} for name, value in {
             "occurrence_source": args.occurrence_source, "prompt_geometry": args.prompt_geometry,
             "cache_index": args.cache_index, "label_index": args.label_index,

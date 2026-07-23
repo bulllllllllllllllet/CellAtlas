@@ -62,6 +62,24 @@ The timestamped output contains tiled pyramidal TIFFs for probability, binary
 mask, and blend coverage; disk-backed accumulators; `completed.jsonl` and
 `failures.jsonl`; and complete provenance in `metadata.json`.
 
+For a coordinate-matched human-review panel, compare the target-class GT and
+the inferred mask side by side:
+
+```bash
+conda run -n aligner python -m benchmarks.v4.whole_slide_inference.visualize_wsi_gt_prediction \
+  --inference-dir /path/to/wsi_inference_TIMESTAMP \
+  --gt-path /path/to/10x_rgb_gt.png \
+  --he-path /path/to/level0_he.tiff \
+  --class-config benchmarks/v4/phase_2_region_encoder/configs/phase2_region_10x.yaml \
+  --target-class necrosis \
+  --timestamp YYYYMMDD_HHMMSS
+```
+
+The script decodes GT using the exact configured RGB palette, verifies the GT
+and prediction against the 10x output canvas, computes full-resolution binary
+metrics, and records visual review as pending for the user. It does not make a
+visual correctness claim.
+
 Positive and negative clicks are resolved to learned regions in their source
 tiles. Those region tokens are encoded once into a global task token. The same
 task token is then applied to all WSI tiles. If a positive and a negative click

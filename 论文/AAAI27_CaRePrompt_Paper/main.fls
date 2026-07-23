@@ -1,4 +1,4 @@
-PWD /home/zhaoyh/CellAtlas/论文/AAAI27_CellAtlas_Paper
+PWD /home/zhaoyh/CellAtlas/论文/AAAI27_CaRePrompt_Paper
 INPUT /home/zhaoyh/TinyTeX/texmf.cnf
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/web2c/texmf.cnf
 INPUT /home/zhaoyh/TinyTeX/texmf-var/web2c/pdftex/pdflatex.fmt
@@ -126,8 +126,9 @@ INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
-INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
-INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
+OUTPUT main.pdf
+INPUT /home/zhaoyh/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/tex/latex/amsfonts/umsa.fd
@@ -142,11 +143,12 @@ INPUT /home/zhaoyh/TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm5.tfm
-OUTPUT main.pdf
-INPUT /home/zhaoyh/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map
-INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
-INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
+INPUT ./main.bbl
+INPUT ./main.bbl
+INPUT main.bbl
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Italic-tlf-t1.tfm
 INPUT main.aux
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb
@@ -156,8 +158,8 @@ INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb
-INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/newtx/ztmb.pfb
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/newtx/ztmr.pfb
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/newtx/ztmri.pfb

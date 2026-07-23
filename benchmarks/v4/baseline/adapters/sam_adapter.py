@@ -19,6 +19,8 @@ class SAMAdapter(BaselineAdapter):
         expected = config.get("checkpoint_sha256")
         if not checkpoint or not expected:
             raise ValueError("SAM checkpoint and checkpoint_sha256 are required")
+        if not config.get("weights_source") or not config.get("license"):
+            raise ValueError("SAM weights_source and license provenance are required")
         actual = sha256_file(checkpoint)
         if actual != expected:
             raise RuntimeError(f"SAM checkpoint SHA-256 mismatch: expected={expected} actual={actual}")
@@ -42,25 +44,23 @@ class SAMAdapter(BaselineAdapter):
             np.ones(len(request.positive_points), dtype=np.int32),
             np.zeros(len(request.negative_points), dtype=np.int32),
         ])
-        box = None if request.prompt_type == "point" else request.positive_box[None].astype(np.float32)
-        masks, predicted_iou, low_res_logits = self.predictor.predict(
+        box = None if request.prompt_type == "point" else request.positive_box.astype(np.float32)
+        mask_logits, predicted_iou, low_res_logits = self.predictor.predict(
             point_coords=points, point_labels=labels, box=box, multimask_output=True,
-            return_logits=False,
+            return_logits=True,
         )
         predicted_iou = np.asarray(predicted_iou, dtype=np.float32)
-        if masks.ndim != 3 or len(masks) != len(predicted_iou) or not np.isfinite(predicted_iou).all():
+        if mask_logits.ndim != 3 or len(mask_logits) != len(predicted_iou) or not np.isfinite(predicted_iou).all():
             raise RuntimeError("SAM returned an invalid candidate set")
         selected = int(np.argmax(predicted_iou))
-        # Official predictor returns thresholded masks. Preserve this deterministic
-        # result as both binary output and a {0,1} probability map; never use GT.
-        binary = np.asarray(masks[selected], dtype=bool)
-        probability = binary.astype(np.float32)
+        probability = (1.0 / (1.0 + np.exp(-np.asarray(mask_logits[selected], dtype=np.float32)))).astype(np.float32)
+        binary = probability >= self.threshold
         peak = torch.cuda.max_memory_allocated(self.device) / (1024 ** 2) if self.device.type == "cuda" else 0.0
         return Prediction(
             probability=probability, binary_mask=binary, peak_memory_mb=float(peak),
             candidates={
                 "selection_rule": "argmax_predicted_iou", "selected_index": selected,
-                "predicted_iou": predicted_iou.tolist(), "candidate_count": int(len(masks)),
+                "predicted_iou": predicted_iou.tolist(), "candidate_count": int(len(mask_logits)),
                 "low_res_logits_shape": list(np.asarray(low_res_logits).shape),
             },
         )
@@ -69,5 +69,6 @@ class SAMAdapter(BaselineAdapter):
         return super().provenance() | {
             "method": "sam", "checkpoint": self.config["checkpoint"],
             "checkpoint_sha256": self.config["checkpoint_sha256"],
+            "weights_source": self.config["weights_source"], "license": self.config["license"],
             "candidate_selection": "argmax_predicted_iou",
         }

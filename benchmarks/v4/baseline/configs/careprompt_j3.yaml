@@ -1,0 +1,13 @@
+name: careprompt_j3
+adapter: careprompt
+factory: REPLACE_WITH_INTEGRATION_MODULE:create_careprompt_j3
+checkpoint: /PATH/TO/FROZEN_J3_CHECKPOINT.pth
+checkpoint_sha256: REPLACE_WITH_VERIFIED_SHA256
+weights_source: local_phase5_or_j3_training_run
+license: internal-research-artifact
+device: cuda:0
+threshold: 0.5
+boundary_tolerance: 2
+failure_metric_policy: empty_mask
+prompt_mapping: frozen_region_slots
+candidate_selection: single_probability_mask

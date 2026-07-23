@@ -143,6 +143,9 @@ def summarize_metrics(frame: pd.DataFrame) -> dict[str, Any]:
         raise ValueError(f"metric rows miss {sorted(missing)}")
     tp, fp, fn = (int(frame[name].sum()) for name in ("tp", "fp", "fn"))
     completed = frame["status"] == "completed"
+    latency = frame["latency_ms"].to_numpy(dtype=np.float64)
+    memory = frame["peak_memory_mb"].to_numpy(dtype=np.float64)
+    finite_latency = latency[np.isfinite(latency)]; finite_memory = memory[np.isfinite(memory)]
     result = {
         "episode_count": len(frame), "completed": int(completed.sum()),
         "abstained": int((frame["status"] == "abstained").sum()),
@@ -151,9 +154,11 @@ def summarize_metrics(frame: pd.DataFrame) -> dict[str, Any]:
         "macro_episode_dice": float(frame["episode_dice"].mean()),
         "boundary_f1_2px": float(frame["boundary_f1"].mean(skipna=True)),
         "tp": tp, "fp": fp, "fn": fn,
-        "latency_ms_mean": float(frame["latency_ms"].mean()),
-        "latency_ms_median": float(frame["latency_ms"].median()),
-        "peak_memory_mb_max": float(frame["peak_memory_mb"].max()),
+        "latency_available": bool(finite_latency.size),
+        "latency_ms_mean": float(finite_latency.mean()) if finite_latency.size else None,
+        "latency_ms_median": float(np.median(finite_latency)) if finite_latency.size else None,
+        "peak_memory_available": bool(finite_memory.size),
+        "peak_memory_mb_max": float(finite_memory.max()) if finite_memory.size else None,
     }
     for group in ("prompt_size", "target_class"):
         result[f"by_{group}"] = {
@@ -178,4 +183,3 @@ def exact_occurrence_alignment(frames: Iterable[pd.DataFrame]) -> list[str]:
         if candidate != reference:
             raise ValueError(f"occurrence alignment mismatch in frame {index}")
     return reference
-

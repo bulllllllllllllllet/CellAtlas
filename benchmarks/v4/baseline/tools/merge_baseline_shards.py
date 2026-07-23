@@ -24,7 +24,7 @@ def main() -> None:
     args = parse_args(); stamp = timestamp(args.timestamp)
     manifest = pd.read_parquet(args.episode_manifest).sort_values("occurrence_order").reset_index(drop=True)
     validate_episode_manifest(manifest)
-    paths = sorted((args.run_dir / "shards").glob(f"episodes_rank*_shard*_{stamp}.parquet"))
+    paths = sorted((args.run_dir / f"shards_{stamp}").glob(f"episodes_rank*_shard*_{stamp}.parquet"))
     if not paths:
         raise FileNotFoundError("no matching episode shards")
     ranks = {int(path.name.split("rank", 1)[1].split("_", 1)[0]) for path in paths}

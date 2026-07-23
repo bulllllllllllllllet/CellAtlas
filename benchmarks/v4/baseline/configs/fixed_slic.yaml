@@ -1,0 +1,11 @@
+name: fixed_slic
+adapter: fixed_slic
+n_segments: 64
+compactness: 10.0
+temperature: 8.0
+threshold: 0.5
+boundary_tolerance: 2
+failure_metric_policy: empty_mask
+prompt_mapping: frozen_region_centroids_and_boxes
+candidate_selection: single_deterministic_mask
+

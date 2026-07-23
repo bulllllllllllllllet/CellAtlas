@@ -54,6 +54,11 @@ def environment_record() -> dict:
     }
 
 
+def source_hashes() -> dict[str, str]:
+    root = Path("benchmarks/v4/baseline")
+    return {str(path): sha256_path(path) for path in sorted(root.rglob("*.py"))}
+
+
 def main() -> None:
     args = parse_args(); stamp = timestamp(args.timestamp)
     if args.world_size < 1 or not 0 <= args.rank < args.world_size:
@@ -81,10 +86,12 @@ def main() -> None:
         output = args.output_dir
         if not output.is_dir() or not output.name.endswith(stamp):
             raise ValueError("output-dir must be an existing directory ending in the run timestamp")
-    shards = output / "shards"
+    shards = output / f"shards_{stamp}"
     shards.mkdir(exist_ok=True)
     completed_path = output / f"completed_{stamp}.jsonl"
     failures_path = output / f"failures_{stamp}.jsonl"
+    completed_path.open("a", encoding="utf-8").close()
+    failures_path.open("a", encoding="utf-8").close()
     rank_metadata = output / f"run_metadata_rank{args.rank:02d}_{stamp}.json"
     command_path = output / f"command_rank{args.rank:02d}_{stamp}.txt"
     command_path.write_text(" ".join(sys.argv) + "\n", encoding="utf-8")
@@ -99,6 +106,7 @@ def main() -> None:
         "manifest": str(args.episode_manifest), "manifest_sha256": sha256_path(args.episode_manifest),
         "config": str(args.config), "config_sha256": sha256_path(args.config),
         "manifest_audit": audit, "failure_metric_policy": "empty_mask",
+        "source_hashes": source_hashes(),
     }
     try:
         adapter = build_adapter(config)
@@ -116,6 +124,7 @@ def main() -> None:
     tolerance = int(config.get("boundary_tolerance", 2))
     rows: list[dict] = []
     shard_index = 0
+    run_started = time.perf_counter()
 
     def flush() -> None:
         nonlocal rows, shard_index
@@ -153,6 +162,15 @@ def main() -> None:
                 positive_points=parse_json_array(record["positive_points_10x"], 2),
                 negative_points=parse_json_array(record["negative_points_10x"], 2),
                 prompt_type=str(record["prompt_size"]), positive_box=positive_box,
+                multiscale_inputs={
+                    "fine": np.asarray(image, dtype=np.uint8),
+                    "wsi_path": str(record["wsi_path"]),
+                    "center_level0": [
+                        int(record["x_level0"]) + int(record["width_level0"]) / 2,
+                        int(record["y_level0"]) + int(record["height_level0"]) / 2,
+                    ],
+                    "fine_box_level0": [int(record[name]) for name in ("x_level0", "y_level0", "width_level0", "height_level0")],
+                } if bool(config.get("requires_multiscale_inputs", False)) else None,
             )
             try:
                 prediction = adapter.timed_predict(request)
@@ -189,7 +207,7 @@ def main() -> None:
         if len(rows) >= args.shard_size:
             flush()
     flush()
-    metadata |= {"gate_status": "completed", "elapsed_seconds": time.perf_counter() - started, "shards": shard_index}
+    metadata |= {"gate_status": "completed", "elapsed_seconds": time.perf_counter() - run_started, "shards": shard_index}
     atomic_json(rank_metadata, metadata)
     print(json.dumps({"output": str(output), "rank": args.rank, "episodes": len(selected), "shards": shard_index}, indent=2))
 

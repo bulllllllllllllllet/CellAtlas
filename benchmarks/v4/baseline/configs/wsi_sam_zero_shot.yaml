@@ -1,0 +1,27 @@
+name: wsi_sam
+adapter: wsi_sam
+factory: benchmarks.v4.baseline.integrations.sam_external:create_wsi_sam
+source_root: /nfs-medical3/zyh/models/manual_sam/WSI-SAM
+source_commit: fd96e5b6b5747c5eec98f19baa71004f066a34df
+checkpoints:
+  mobile_sam:
+    path: /nfs-medical3/zyh/models/manual_sam/extracted_20260723_001542/sam/mobile_sam.pt
+    sha256: 6dbb90523a35330fedd7f1d3dfc66f995213d81b29a5ca8108dbcdd4e37d6c2f
+  net_high:
+    path: /nfs-medical3/zyh/models/manual_sam/extracted_20260723_001542/sam/net_high.pth
+    sha256: 905fb8d70b3f15bef0aff9cd582b5b230c9aa8f93bf9c23e51be8a3a27c60f4a
+  net_low:
+    path: /nfs-medical3/zyh/models/manual_sam/extracted_20260723_001542/sam/net_low.pth
+    sha256: 412ade768ac26e8edd0ce90602a8c90f195a2134b2b3e0128872bd463d3cd18c
+  vit_tiny_maskdecoder:
+    path: /nfs-medical3/zyh/models/manual_sam/extracted_20260723_001542/sam/vit_tiny_maskdecoder.pt
+    sha256: 6905f8f1d6145e62cef191931175133791a5ec3ec5b705844e38dd7e7f1d4ee6
+weights_source: https://github.com/HongLiuuuuu/WSI-SAM
+license: NOT_DECLARED_IN_OFFICIAL_REPOSITORY
+device: cuda:0
+threshold: 0.5
+boundary_tolerance: 2
+failure_metric_policy: empty_mask
+prompt_mapping: point_or_frozen_region_box
+candidate_selection: single_fused_mask
+requires_multiscale_inputs: true

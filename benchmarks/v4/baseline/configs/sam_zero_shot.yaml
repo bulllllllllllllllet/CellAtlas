@@ -1,0 +1,13 @@
+name: sam
+adapter: sam
+model_type: vit_b
+checkpoint: /nfs-medical3/zyh/models/sam/sam_vit_b_01ec64.pth
+checkpoint_sha256: ec2df62732614e57411cdcf32a23ffdf28910380d03139ee0f4fcbe91eb8c912
+weights_source: https://github.com/facebookresearch/segment-anything#model-checkpoints
+license: Apache-2.0
+device: cuda:0
+threshold: 0.5
+boundary_tolerance: 2
+failure_metric_policy: empty_mask
+prompt_mapping: point_or_frozen_region_box
+candidate_selection: argmax_predicted_iou
