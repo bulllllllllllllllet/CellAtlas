@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex FewClick_AAAI27"] 1785145980.74009 "FewClick_AAAI27.aux" "FewClick_AAAI27.bbl" "FewClick_AAAI27" 1785147293.76474 0
+["bibtex FewClick_AAAI27"] 1785145980.74009 "FewClick_AAAI27.aux" "FewClick_AAAI27.bbl" "FewClick_AAAI27" 1785153188.3482 0
   "./FewClick_AAAI27.bib" 1785045524.74764 4478 933372b03ccd1c7273b07fed8a5fe755 ""
   "./aaai2027.bst" 1785145980.6412 30207 bd248dfe461b9b2fc7481a44feafe197 ""
-  "FewClick_AAAI27.aux" 1785147293.67157 2503 516607e310d97f0e4fc6e5877105c03a "pdflatex"
+  "FewClick_AAAI27.aux" 1785153188.25478 2503 516607e310d97f0e4fc6e5877105c03a "pdflatex"
   (generated)
   "FewClick_AAAI27.bbl"
   "FewClick_AAAI27.blg"
   (rewritten before read)
-["pdflatex"] 1785147293.38928 "FewClick_AAAI27.tex" "FewClick_AAAI27.pdf" "FewClick_AAAI27" 1785147293.76491 0
+["pdflatex"] 1785153187.97338 "FewClick_AAAI27.tex" "FewClick_AAAI27.pdf" "FewClick_AAAI27" 1785153188.34847 0
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc" 1698694482 2914 fdbc4a54b9bc76f4551b5303f2737d33 ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/jknappen/ec/ecrm1000.tfm" 1136768653 3584 adb004a0c8e7c46ee66cad73671f37b4 ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
@@ -95,9 +95,9 @@
   "/home/zhaoyh/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1783525617 168480 9e4355181067b1d0d26e5bf9e0af1eb7 ""
   "/home/zhaoyh/TinyTeX/texmf-var/web2c/pdftex/pdflatex.fmt" 1783524185 2250948 7f9d598b318039e0cc09009c9e1166ea ""
   "/home/zhaoyh/TinyTeX/texmf.cnf" 1783523989.51087 637 edd806fb06a89761a6034e1968af9017 ""
-  "FewClick_AAAI27.aux" 1785147293.67157 2503 516607e310d97f0e4fc6e5877105c03a "pdflatex"
+  "FewClick_AAAI27.aux" 1785153188.25478 2503 516607e310d97f0e4fc6e5877105c03a "pdflatex"
   "FewClick_AAAI27.bbl" 1785145980.7532 4856 1e893fead817f3b79843f60c8c03bea0 "bibtex FewClick_AAAI27"
-  "FewClick_AAAI27.tex" 1785147268.87936 34114 a07e3f2415a0d16002554854622aba59 ""
+  "FewClick_AAAI27.tex" 1785153180.9427 34127 535548a2a7e8106a31ddc8b056be274b ""
   "aaai2027.sty" 1785145980.6372 16915 1b1c792e2acfbbd8b672259e267b95d8 ""
   "images/figure_prompt_budget_curve.pdf" 1785146150.17147 23178 7e3b159b3bc7493ae62829ad87f73048 ""
   "images/main_picture.pdf" 1785139281.08653 1906692 1a328f6729fc38f28e296d960c3cd038 ""
