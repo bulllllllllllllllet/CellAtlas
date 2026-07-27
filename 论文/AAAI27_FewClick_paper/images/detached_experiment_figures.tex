@@ -68,7 +68,7 @@
 
 \begin{center}
 \begin{minipage}{178mm}
-\captionof{table}{Patch-level segmentation under matched episodes and prompt coordinates. Best results within each prompt budget are in bold.}
+\captionsetup{width=\linewidth}
 \centering
 \footnotesize
 \setlength{\tabcolsep}{7pt}
@@ -93,12 +93,14 @@ WSI-SAM   &             &                     & 0.6041 & 0.6057 & 0.4397 & 0.176
 \textbf{FewClick} &     &                     & \textbf{0.8425} & \textbf{0.8406} & \textbf{0.7178} & \textbf{0.3229} \\
 \bottomrule
 \end{tabular}
+\captionof{table}{Patch-level segmentation under matched episodes and prompt coordinates. Best results within each prompt budget are in bold.}
 \end{minipage}
 \end{center}
 
 \clearpage
 \begin{center}
 \begin{minipage}{84mm}
+\captionsetup{width=\linewidth}
 \setcounter{figure}{1}
 \centering
 \setlength{\unitlength}{1mm}
@@ -169,7 +171,7 @@ WSI-SAM   &             &                     & 0.6041 & 0.6057 & 0.4397 & 0.176
 \clearpage
 \begin{center}
 \begin{minipage}{84mm}
-\captionof{table}{Oracle-assisted whole-slide results on 10 WSIs and 12 tissues. The differing protocols are described in the text; values indicate attainable rather than strictly matched performance.}
+\captionsetup{width=\linewidth}
 \centering\footnotesize
 \setlength{\tabcolsep}{2.6pt}\renewcommand{\arraystretch}{1.12}
 \begin{tabular}{lccccc}
@@ -183,13 +185,14 @@ WSI-SAM   & 0.4342 & 0.3245 & 0.4892 & 0.4146 & 0.7418 \\
 \textbf{FewClick} & \textbf{0.7495} & \textbf{0.6383} & \textbf{0.7456} & \textbf{0.7676} & \textbf{0.9237} \\
 \bottomrule
 \end{tabular}
+\captionof{table}{Oracle-assisted whole-slide results on 10 WSIs and 12 tissues. The differing protocols are described in the text; values indicate attainable rather than strictly matched performance.}
 \end{minipage}
 \end{center}
 
 \clearpage
 \begin{center}
 \begin{minipage}{84mm}
-\captionof{table}{Per-class whole-slide Dice. Best results are in bold.}
+\captionsetup{width=\linewidth}
 \centering\footnotesize
 \setlength{\tabcolsep}{2.2pt}\renewcommand{\arraystretch}{1.12}
 \begin{tabular}{@{}lcccc@{}}
@@ -210,13 +213,14 @@ Adipose & \textbf{0.6820} & 0.2894 & 0.3711 & 0.3979 \\
 Blood & \textbf{0.5419} & 0.1550 & 0.2078 & 0.2487 \\
 \bottomrule
 \end{tabular}
+\captionof{table}{Per-class whole-slide Dice. Best results are in bold.}
 \end{minipage}
 \end{center}
 
 \clearpage
 \begin{center}
 \begin{minipage}{84mm}
-\captionof{table}{Component ablations on 4,000 fixed validation episodes. $\Delta$ is the macro-Dice change from FewClick.}
+\captionsetup{width=\linewidth}
 \centering\footnotesize
 \setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.12}
 \begin{tabular}{lcccc}
@@ -231,6 +235,7 @@ Fixed SLIC regions & 0.5650 & 0.6482 & 0.1475 & $-0.1763$ \\
 Mean prompt prototypes & 0.7215 & 0.7970 & 0.3062 & $-0.0199$ \\
 \bottomrule
 \end{tabular}
+\captionof{table}{Component ablations on 4,000 fixed validation episodes. $\Delta$ is the macro-Dice change from FewClick.}
 \end{minipage}
 \end{center}
 

@@ -6,6 +6,7 @@
 \def\UrlFont{\rm}
 \usepackage{natbib}
 \usepackage{caption}
+\usepackage{placeins}
 \frenchspacing
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
@@ -210,15 +211,45 @@ We compare FewClick with SAM, SAM-Med2D, and WSI-SAM using their public pretrain
 \paragraph{Patch-level results.}
 We evaluate three interaction budgets, denoted $(1{+}1)$, $(3{+}1)$, and $(5{+}1)$ for one, three, or five positive points plus one negative point. FewClick leads every baseline under every budget and metric. With only $(1{+}1)$ prompts, it reaches 0.7522 global Dice and 0.7418 macro Dice, exceeding the strongest external baseline, SAM, by 0.2662 and 0.2769, respectively. Performance increases further with additional positive points, reaching 0.8425 global Dice under the $(5{+}1)$ budget.
 
-Because eligibility differs across budgets, we separately control for sample composition on their common subset: 885 occurrences from 819 unique patches, with identical masks, classes, and negative points. All four methods improve as the positive-point budget grows. FewClick rises from 0.7915 global Dice with one positive point to 0.8291 with three and 0.8425 with five. Thus, its advantage is not an artifact of changing episode composition, and additional positive evidence yields consistent gains on the controlled cohort.
+\begin{table*}[!t]
+\centering
+\includegraphics[width=\textwidth]{images/table_patch_comparison.pdf}
+\refstepcounter{table}\label{tab:patch-comparison}
+\end{table*}
+
+Table~\ref{tab:patch-comparison} summarizes the matched-episode results. Because eligibility differs across budgets, we separately control for sample composition on their common subset: 885 occurrences from 819 unique patches, with identical masks, classes, and negative points. All four methods improve as the positive-point budget grows. FewClick rises from 0.7915 global Dice with one positive point to 0.8291 with three and 0.8425 with five. Thus, its advantage is not an artifact of changing episode composition, and additional positive evidence yields consistent gains on the controlled cohort (Figure~\ref{fig:prompt-budget}).
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{images/figure_prompt_budget_curve.pdf}
+\refstepcounter{figure}\label{fig:prompt-budget}
+\end{figure}
 
 \paragraph{Whole-slide results.}
 We next evaluate 12 tissue classes present in each of 10 WSIs. For FewClick, five $(1{+}1)$ prompt candidates are generated per WSI--class pair, and the candidate with the highest ground-truth Dice is retained (600 successful whole-slide inferences). The patchwise baselines are applied only to ground-truth-positive patches and then stitched, requiring 23,642 local calls per method. Both protocols therefore use oracle information---candidate selection for FewClick and positive-patch selection for the baselines. We report this experiment as attainable whole-slide performance under each inference paradigm; the matched patch-level evaluation remains the controlled comparison.
 
-FewClick obtains 0.7495 macro Dice, surpassing WSI-SAM, the strongest baseline on this metric, by 0.3153. It also improves macro mIoU and micro Dice by 0.3138 and 0.1819, respectively. SAM attains high recall but low precision, indicating extensive false positives, whereas FewClick maintains balanced precision and recall. FewClick ranks first for all 12 tissues, with particularly large gains on normal gland, normal stroma, and lymphocyte aggregates, where cellular composition and contextual organization are informative. Necrosis and blood remain the most challenging classes.
+FewClick obtains 0.7495 macro Dice, surpassing WSI-SAM, the strongest baseline on this metric, by 0.3153. It also improves macro mIoU and micro Dice by 0.3138 and 0.1819, respectively (Table~\ref{tab:wsi-comparison}). SAM attains high recall but low precision, indicating extensive false positives, whereas FewClick maintains balanced precision and recall. FewClick ranks first for all 12 tissues, with particularly large gains on normal gland, normal stroma, and lymphocyte aggregates, where cellular composition and contextual organization are informative (Table~\ref{tab:wsi-per-class}). Necrosis and blood remain the most challenging classes.
+
+\begin{table}[!t]
+\centering
+\includegraphics[width=\columnwidth]{images/table_wsi_comparison.pdf}
+\refstepcounter{table}\label{tab:wsi-comparison}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\includegraphics[width=\columnwidth]{images/table_wsi_per_class.pdf}
+\refstepcounter{table}\label{tab:wsi-per-class}
+\end{table}
 
 \subsection{Ablation Studies}
-We isolate four completed architectural ablations under the fixed 4,000-episode validation protocol. All results in this section are used only for validation-time model analysis; the sealed test split is not read. Removing or simplifying any component reduces performance, confirming that the gains do not arise from a single branch.
+We isolate four completed architectural ablations under the fixed 4,000-episode validation protocol (Table~\ref{tab:ablations}). All results in this section are used only for validation-time model analysis; the sealed test split is not read. Removing or simplifying any component reduces performance, confirming that the gains do not arise from a single branch.
+
+\begin{table}[!t]
+\centering
+\includegraphics[width=\columnwidth]{images/table_ablation.pdf}
+\refstepcounter{table}\label{tab:ablations}
+\end{table}
 
 \paragraph{Learnable regions.}
 Replacing differentiable region assignment with 64 fixed SLIC regions of the same 256-dimensional token capacity yields the largest degradation: macro Dice drops by 0.1763 and Boundary F1 by 0.1667. Its prompt-conflict rate is 0.5645, meaning that opposing prompts collapse into the same hard region in over half of the episodes. The gain therefore reflects task-adaptive spatial support and prompt--region alignment, rather than additional tokens or model capacity.
@@ -230,7 +261,7 @@ Removing cell-to-region attention, cell density, and cell statistics reduces mac
 Restricting FewClick to fine-scale regions decreases macro Dice by 0.1029 and micro Dice by 0.1209, compared with a 0.0512 drop in Boundary F1. Fine regions preserve local contours but lack the field of view needed to resolve glandular layout, tissue adjacency, and distant occurrences. Hierarchical interaction consequently contributes mainly to tissue identity and global retrieval, not merely boundary refinement.
 
 \paragraph{Prompt-set aggregation.}
-Replacing the learned, signed Set Encoder with masked positive and negative mean prototypes reduces macro Dice from 0.7413 to 0.7215 and micro Dice from 0.8138 to 0.7970; Boundary F1 also decreases from 0.3142 to 0.3062. This variant uses the same prompt-tail and decoder training protocol, so the difference isolates the aggregation rule rather than downstream adaptation. The result indicates that learned permutation-invariant aggregation retains prompt-set structure beyond a first-order prototype, particularly when positive and negative evidence must be combined to define a tissue concept. Its 0.05 prompt-conflict rate is below the fixed-region control, but no checkpoint satisfies the validation-only selection criteria; we therefore treat this as evidence for the Prompt Set Encoder rather than a deployable alternative.
+Replacing the learned signed set encoder with masked positive and negative mean prototypes yields lower macro Dice, micro Dice, and Boundary F1. Because this variant shares the same prompt‑tail and decoder training protocol, the drop isolates the aggregation rule and excludes downstream adaptation effects. The result indicates that learned permutation‑invariant aggregation retains prompt‑set structure beyond first‑order prototypes. We therefore regard this finding as evidence supporting the Prompt Set Encoder, rather than as a deployable alternative.
 
 \FloatBarrier
 

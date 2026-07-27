@@ -1,0 +1,79 @@
+\begin{thebibliography}{15}
+\providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Chan et~al.(2019)Chan, Hosseini, Rowsell, Plataniotis, and Damaskinos}]{chan2019histosegnet}
+Chan, L.; Hosseini, M.~S.; Rowsell, C.; Plataniotis, K.~N.; and Damaskinos, S. 2019.
+\newblock HistoSegNet: Semantic Segmentation of Histological Tissue Type in Whole Slide Images.
+\newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision}, 10662--10671.
+
+\bibitem[{Chen et~al.(2022)Chen, Chen, Li, Chen, Trister, Krishnan, and Mahmood}]{chen2022hipt}
+Chen, R.~J.; Chen, C.; Li, Y.; Chen, T.~Y.; Trister, A.~D.; Krishnan, R.~G.; and Mahmood, F. 2022.
+\newblock Scaling Vision Transformers to Gigapixel Images via Hierarchical Self-Supervised Learning.
+\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, 16144--16155.
+
+\bibitem[{Cheng et~al.(2023)Cheng, Ye, Deng et~al.}]{cheng2023sammed2d}
+Cheng, J.; Ye, J.; Deng, Z.; et~al. 2023.
+\newblock {SAM-Med2D}.
+\newblock \emph{arXiv preprint arXiv:2308.16184}.
+
+\bibitem[{Deng et~al.(2025)Deng, Cui, Liu et~al.}]{deng2023sam_pathology}
+Deng, R.; Cui, C.; Liu, Q.; et~al. 2025.
+\newblock Segment Anything Model ({SAM}) for Digital Pathology: Assess Zero-Shot Segmentation on Whole Slide Imaging.
+\newblock \emph{IS\&T International Symposium on Electronic Imaging Science and Technology}, 37(14).
+
+\bibitem[{Graham et~al.(2019)Graham, Vu, Raza et~al.}]{graham2019hovernet}
+Graham, S.; Vu, Q.~D.; Raza, S. E.~A.; et~al. 2019.
+\newblock {HoVer-Net}: Simultaneous Segmentation and Classification of Nuclei in Multi-Tissue Histology Images.
+\newblock \emph{Medical Image Analysis}, 58: 101563.
+
+\bibitem[{Ho et~al.(2021)Ho, Yarlagadda, D'Alfonso et~al.}]{ho2021dmmn}
+Ho, D.~J.; Yarlagadda, D. V.~K.; D'Alfonso, T.~M.; et~al. 2021.
+\newblock Deep Multi-Magnification Networks for Multi-Class Breast Cancer Image Segmentation.
+\newblock \emph{Computerized Medical Imaging and Graphics}, 88: 101866.
+
+\bibitem[{H{\"o}rst et~al.(2024)H{\"o}rst, Rempe, Heine et~al.}]{horst2024cellvit}
+H{\"o}rst, F.; Rempe, M.; Heine, L.; et~al. 2024.
+\newblock {CellViT}: Vision Transformers for Precise Cell Segmentation and Classification.
+\newblock \emph{Medical Image Analysis}, 94: 103143.
+
+\bibitem[{Kirillov et~al.(2023)Kirillov, Mintun, Ravi et~al.}]{kirillov2023sam}
+Kirillov, A.; Mintun, E.; Ravi, N.; et~al. 2023.
+\newblock Segment Anything.
+\newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision}, 4015--4026.
+
+\bibitem[{Liu et~al.(2024)Liu, Yang, van Diest, Pluim, and Veta}]{liu2024wsisam}
+Liu, H.; Yang, H.; van Diest, P.~J.; Pluim, J. P.~W.; and Veta, M. 2024.
+\newblock {WSI-SAM}: Multi-Resolution Segment Anything Model ({SAM}) for Histopathology Whole-Slide Images.
+\newblock In \emph{Proceedings of the MICCAI Workshop on Computational Pathology}, volume 254 of \emph{Proceedings of Machine Learning Research}, 25--37.
+
+\bibitem[{Ma et~al.(2024)Ma, He, Li, Han, You, and Wang}]{ma2024medsam}
+Ma, J.; He, Y.; Li, F.; Han, L.; You, C.; and Wang, B. 2024.
+\newblock Segment Anything in Medical Images.
+\newblock \emph{Nature Communications}, 15: 654.
+
+\bibitem[{Ryu et~al.(2023)Ryu, Puche, Shin et~al.}]{ryu2023ocelot}
+Ryu, J.; Puche, A.~V.; Shin, J.; et~al. 2023.
+\newblock {OCELOT}: Overlapped Cell on Tissue Dataset for Histopathology.
+\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, 23902--23912.
+
+\bibitem[{Tokunaga et~al.(2019)Tokunaga, Teramoto, Yoshizawa, and Bise}]{tokunaga2019awmf}
+Tokunaga, H.; Teramoto, Y.; Yoshizawa, A.; and Bise, R. 2019.
+\newblock Adaptive Weighting Multi-Field-of-View {CNN} for Semantic Segmentation in Pathology.
+\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, 12597--12606.
+
+\bibitem[{van Rijthoven et~al.(2021)van Rijthoven, Balkenhol, Sili{\c{n}}a, van~der Laak, and Ciompi}]{vanrijthoven2021hooknet}
+van Rijthoven, M.; Balkenhol, M.; Sili{\c{n}}a, K.; van~der Laak, J.; and Ciompi, F. 2021.
+\newblock {HookNet}: Multi-Resolution Convolutional Neural Networks for Semantic Segmentation in Histopathology Whole-Slide Images.
+\newblock \emph{Medical Image Analysis}, 68: 101890.
+
+\bibitem[{Wang et~al.(2023)Wang, Rong, Zhou et~al.}]{wang2023ceograph}
+Wang, S.; Rong, R.; Zhou, Q.; et~al. 2023.
+\newblock Deep Learning of Cell Spatial Organizations Identifies Clinically Relevant Insights in Tissue Images.
+\newblock \emph{Nature Communications}, 14: 7872.
+
+\bibitem[{Xu et~al.(2019)Xu, Song, Sun et~al.}]{xu2019camel}
+Xu, G.; Song, Z.; Sun, Z.; et~al. 2019.
+\newblock {CAMEL}: A Weakly Supervised Learning Framework for Histopathology Image Segmentation.
+\newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision}, 10682--10691.
+
+\end{thebibliography}

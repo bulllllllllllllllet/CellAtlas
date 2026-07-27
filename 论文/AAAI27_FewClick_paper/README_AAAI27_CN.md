@@ -48,3 +48,9 @@ TEXINPUTS='../AuthorKit27/AuthorKit27:' BSTINPUTS='../AuthorKit27/AuthorKit27:' 
 - 已扫描常见 Chinglish、AI 高频套话和中文字符，正文未检出高风险项。
 
 注意：当前 6 页主要是因为中文源稿的实验章节为空。补齐实验、图表后页数会明显增加，需要依据 AAAI 2027 主会最终公布的正文页数限制进一步压缩。
+
+
+ cd /home/zhaoyh/CellAtlas/论文/AAAI27_FewClick_paper
+  latexmk -pdf -interaction=nonstopmode -halt-on-error FewClick_AAAI27.tex
+
+  ./build_detached_experiment_figures.sh
