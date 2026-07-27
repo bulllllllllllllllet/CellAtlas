@@ -23,7 +23,14 @@ def parse() -> argparse.Namespace:
     p.add_argument("--config",required=True); p.add_argument("--patch-index",required=True); p.add_argument("--output-root",required=True)
     p.add_argument("--ctranspath-checkpoint",default="module/checkpoint/ctranspath.pth"); p.add_argument("--xcell-checkpoint",default="module/checkpoint/he_model_best.pth")
     p.add_argument("--split",choices=("train","val","test"),required=True); p.add_argument("--start",type=int,default=0); p.add_argument("--end",type=int); p.add_argument("--limit",type=int); p.add_argument("--shard-size",type=int,default=25)
-    p.add_argument("--max-cells",type=int,default=255); p.add_argument("--cell-batch-size",type=int,default=255); p.add_argument("--preprocess-mode",choices=("reference","batched"),default="reference"); p.add_argument("--selection-policy",choices=("legacy_label_prefix","spatial_stratified"),default="legacy_label_prefix"); p.add_argument("--spatial-grid-size",type=int,default=8); p.add_argument("--device",default="cuda:1"); p.add_argument("--timestamp",default=None)
+    p.add_argument("--max-cells",type=int,default=255); p.add_argument("--cell-batch-size",type=int,default=255)
+    p.add_argument(
+        "--preprocess-mode",
+        choices=("reference","batched"),
+        default="batched",
+        help="Use batched by default; select reference only for strict historical feature reproduction.",
+    )
+    p.add_argument("--selection-policy",choices=("legacy_label_prefix","spatial_stratified"),default="legacy_label_prefix"); p.add_argument("--spatial-grid-size",type=int,default=8); p.add_argument("--device",default="cuda:1"); p.add_argument("--timestamp",default=None)
     return p.parse_args()
 
 

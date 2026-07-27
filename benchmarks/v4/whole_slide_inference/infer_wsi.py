@@ -17,6 +17,7 @@ import pandas as pd
 os.environ.setdefault("VIPS_CONCURRENCY", "1")
 import pyvips
 import torch
+from PIL import Image
 
 pyvips.cache_set_max(0)
 pyvips.cache_set_max_mem(64 * 1024 * 1024)
@@ -80,8 +81,16 @@ def save_json(path: Path, value: dict) -> None:
 class SlideReader:
     def __init__(self, path: Path):
         self.path = Path(path)
-        self.image = pyvips.Image.new_from_file(str(path), access="random")
-        if self.image.bands < 3:
+        self.is_kfb = self.path.suffix.lower() == ".kfb"
+        if self.is_kfb:
+            from module.KFBreader.kfbreader import KFBSlide
+            self.image = KFBSlide(str(path))
+            self.width, self.height = self.image.dimensions
+            self.bands = 3
+        else:
+            self.image = pyvips.Image.new_from_file(str(path), access="random")
+            self.width, self.height, self.bands = self.image.width, self.image.height, self.image.bands
+        if self.bands < 3:
             raise ValueError(f"WSI has fewer than three channels: {path}")
 
     def read(self, row: dict) -> np.ndarray:
@@ -90,16 +99,19 @@ class SlideReader:
         output_width = int(row["width_10x"]); output_height = int(row["height_10x"])
         if output_width != output_height or width != height:
             raise ValueError("J5 expects square model tiles")
+        if self.is_kfb:
+            patch = np.asarray(self.image.read_region((x, y), 0, (width, height)), dtype=np.uint8)[..., :3]
+            return np.asarray(
+                Image.fromarray(patch).resize((output_width, output_height), Image.Resampling.BILINEAR),
+                dtype=np.uint8,
+            )
         patch = self.image.crop(x, y, width, height).resize(output_width / width)
         if patch.width != output_width or patch.height != output_height:
             raise RuntimeError(
                 f"libvips resize produced {(patch.width, patch.height)}, expected {(output_width, output_height)}"
             )
         patch = patch.extract_band(0, n=3)
-        return np.ndarray(
-            buffer=patch.write_to_memory(), dtype=np.uint8,
-            shape=(output_height, output_width, 3),
-        ).copy()
+        return np.ndarray(buffer=patch.write_to_memory(), dtype=np.uint8, shape=(output_height, output_width, 3)).copy()
 
 
 def load_model(args: argparse.Namespace, device: torch.device) -> tuple[JointPromptMaskModel, dict]:
@@ -297,14 +309,14 @@ def main() -> None:
     width, height, downsample = validate_tile_rows(rows)
     wsi_path = Path(rows[0]["wsi_path"])
     reader = SlideReader(wsi_path)
-    source_width_10x = reader.image.width // downsample
-    source_height_10x = reader.image.height // downsample
+    source_width_10x = reader.width // downsample
+    source_height_10x = reader.height // downsample
     if (width, height) != (source_width_10x, source_height_10x):
         raise RuntimeError(
             "tile index is not a whole-slide canvas: "
             f"index={(width, height)} source={(source_width_10x, source_height_10x)}"
         )
-    prompts = load_prompts(args.prompt_json, reader.image.width, reader.image.height)
+    prompts = load_prompts(args.prompt_json, reader.width, reader.height)
     inputs = [
         args.config, args.phase2_config, args.phase5_config, args.phase2_checkpoint,
         args.cell_checkpoint, args.phase5_checkpoint, args.joint_checkpoint,

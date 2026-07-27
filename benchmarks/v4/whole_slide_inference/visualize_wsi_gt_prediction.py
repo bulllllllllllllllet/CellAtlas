@@ -102,15 +102,21 @@ def read_binary_masks(
     expected_width: int,
     expected_height: int,
     target_rgb: tuple[int, int, int],
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, dict[str, int | list[int]]]:
     gt = pyvips.Image.new_from_file(str(gt_path), access="sequential")
     prediction = pyvips.Image.new_from_file(str(prediction_path), page=0, access="sequential")
-    for label, image in (("GT", gt), ("prediction", prediction)):
-        if (image.width, image.height) != (expected_width, expected_height):
-            raise ValueError(
-                f"{label} dimensions {(image.width, image.height)} do not match "
-                f"the 10x inference canvas {(expected_width, expected_height)}"
-            )
+    if (prediction.width, prediction.height) != (expected_width, expected_height):
+        raise ValueError(
+            f"prediction dimensions {(prediction.width, prediction.height)} do not match "
+            f"the 10x inference canvas {(expected_width, expected_height)}"
+        )
+    width_padding = expected_width - gt.width
+    height_padding = expected_height - gt.height
+    if width_padding not in (0, 1) or height_padding not in (0, 1):
+        raise ValueError(
+            f"GT dimensions {(gt.width, gt.height)} are not the inference canvas "
+            f"{(expected_width, expected_height)} or its exact floor-rounded extent"
+        )
     if gt.bands < 3:
         raise ValueError(f"GT must be RGB/RGBA for exact palette decoding: {gt_path}")
     gt_mask = (
@@ -120,11 +126,19 @@ def read_binary_masks(
     ).cast("uchar")
     if prediction.bands != 1:
         prediction = prediction[0]
-    gt_array = np.frombuffer(gt_mask.write_to_memory(), dtype=np.uint8).reshape(expected_height, expected_width)
+    prediction = prediction.crop(0, 0, gt.width, gt.height)
+    gt_array = np.frombuffer(gt_mask.write_to_memory(), dtype=np.uint8).reshape(gt.height, gt.width)
     pred_array = np.frombuffer(prediction.cast("uchar").write_to_memory(), dtype=np.uint8).reshape(
-        expected_height, expected_width
+        gt.height, gt.width
     )
-    return gt_array, pred_array
+    extent = {
+        "evaluation_shape_10x": [int(gt.height), int(gt.width)],
+        "inference_shape_10x": [int(expected_height), int(expected_width)],
+        "excluded_right_padding_pixels": int(width_padding),
+        "excluded_bottom_padding_pixels": int(height_padding),
+        "excluded_padding_pixel_count": int(expected_width * expected_height - gt.width * gt.height),
+    }
+    return gt_array, pred_array, extent
 
 
 def exact_binary_metrics(gt: np.ndarray, prediction: np.ndarray) -> dict[str, float | int | list[int]]:
@@ -226,7 +240,7 @@ def main() -> None:
         output_height,
     )
     target_id, target_rgb = load_target(args.class_config, args.target_class)
-    gt, prediction = read_binary_masks(
+    gt, prediction, evaluation_extent = read_binary_masks(
         args.gt_path,
         Path(metadata["mask_tiff"]),
         output_width,
@@ -285,6 +299,7 @@ def main() -> None:
         ],
         "prompt_legend": {"positive": "green circle with plus", "negative": "red X"},
         "contract_checks": contract_checks,
+        "evaluation_extent": evaluation_extent,
         "inputs": {
             "metadata": str(metadata_path),
             "he": str(args.he_path),

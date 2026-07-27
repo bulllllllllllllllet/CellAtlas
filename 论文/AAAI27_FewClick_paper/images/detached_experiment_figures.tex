@@ -1,0 +1,237 @@
+\documentclass[10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{xfp}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage[margin=6mm]{geometry}
+\pagestyle{empty}
+\definecolor{samblue}{RGB}{0,114,178}
+\definecolor{medorange}{RGB}{230,159,0}
+\definecolor{wsigreen}{RGB}{0,158,115}
+\definecolor{fewred}{RGB}{213,94,0}
+\captionsetup{font=small,labelfont=bf}
+
+% ============================================================================
+% EDIT AREA A -- CURVE VALUES
+% Change ONLY the number after each command to change the plotted Dice value.
+% The order in every row is: 1+1 prompts, 3+1 prompts, 5+1 prompts.
+% ============================================================================
+\newcommand{\samone}{0.5546}      % SAM,       1+1
+\newcommand{\samthree}{0.6033}    % SAM,       3+1
+\newcommand{\samfive}{0.6290}     % SAM,       5+1
+\newcommand{\medone}{0.4162}      % SAM-Med2D, 1+1
+\newcommand{\medthree}{0.5269}    % SAM-Med2D, 3+1
+\newcommand{\medfive}{0.6050}     % SAM-Med2D, 5+1
+\newcommand{\wsione}{0.4354}      % WSI-SAM,   1+1
+\newcommand{\wsithree}{0.5660}    % WSI-SAM,   3+1
+\newcommand{\wsifive}{0.6041}     % WSI-SAM,   5+1
+\newcommand{\fewone}{0.7915}      % FewClick,  1+1
+\newcommand{\fewthree}{0.8291}    % FewClick,  3+1
+\newcommand{\fewfive}{0.8425}     % FewClick,  5+1
+
+% ============================================================================
+% EDIT AREA B -- LABEL POSITIONS
+% These settings move only the printed number, not the data point or curve.
+% LabelX controls left/right placement. LabelYOffset controls up/down placement
+% in mm: positive = up; negative = down.
+% ============================================================================
+\newcommand{\samoneLabelX}{22}          \newcommand{\samoneLabelYOffset}{2.05}     % SAM 1+1
+\newcommand{\samthreeLabelX}{44}        \newcommand{\samthreeLabelYOffset}{2.05}   % SAM 3+1
+\newcommand{\samfiveLabelX}{64.5}       \newcommand{\samfiveLabelYOffset}{2.25}    % SAM 5+1
+\newcommand{\medoneLabelX}{18.5}        \newcommand{\medoneLabelYOffset}{-2.05}    % SAM-Med2D 1+1
+\newcommand{\medthreeLabelX}{43.5}      \newcommand{\medthreeLabelYOffset}{-3.15}  % SAM-Med2D 3+1
+\newcommand{\medfiveLabelX}{70.5}       \newcommand{\medfiveLabelYOffset}{1.75}    % SAM-Med2D 5+1
+\newcommand{\wsioneLabelX}{26}          \newcommand{\wsioneLabelYOffset}{4.0}      % WSI-SAM 1+1 (0.4354)
+\newcommand{\wsithreeLabelX}{50}        \newcommand{\wsithreeLabelYOffset}{-3}   % WSI-SAM 3+1
+\newcommand{\wsifiveLabelX}{63.5}       \newcommand{\wsifiveLabelYOffset}{-2.10}   % WSI-SAM 5+1
+\newcommand{\fewoneLabelX}{22}          \newcommand{\fewoneLabelYOffset}{2.20}     % FewClick 1+1
+\newcommand{\fewthreeLabelX}{44}        \newcommand{\fewthreeLabelYOffset}{2.20}   % FewClick 3+1
+\newcommand{\fewfiveLabelX}{66}         \newcommand{\fewfiveLabelYOffset}{2.25}    % FewClick 5+1
+
+% ============================================================================
+% INTERNAL PLOTTING HELPERS -- normally do not edit below this line.
+% ============================================================================
+\newcommand{\ploty}[1]{\fpeval{8 + (#1 - 0.2) * 55.714285714}}
+\newcommand{\plotmidy}[2]{\fpeval{(\ploty{#1} + \ploty{#2}) / 2}}
+\newcommand{\plotlabel}[2]{%
+  {\setlength{\fboxsep}{0.45pt}%
+   \colorbox{white}{\color{#1}\scriptsize #2}}}
+% A four-row group has its visual center about 18pt below the first-row
+% baseline. Use an explicit length because tabular resets \baselineskip.
+\newcommand{\groupcell}[1]{\smash{\raisebox{-18pt}{#1}}}
+
+\begin{document}
+
+\begin{center}
+\begin{minipage}{178mm}
+\captionof{table}{Patch-level segmentation under matched episodes and prompt coordinates. Best results within each prompt budget are in bold.}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{7pt}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{lcc cccc}
+\toprule
+Method & Prompts & Episodes & Global Dice & Macro Dice & mIoU & Boundary F1 \\
+\midrule
+SAM       & \groupcell{$(1{+}1)$} & \groupcell{4,000} & 0.4860 & 0.4649 & 0.3094 & 0.1369 \\
+SAM-Med2D &             &                       & 0.4219 & 0.4318 & 0.2979 & 0.1454 \\
+WSI-SAM   &             &                       & 0.4154 & 0.4064 & 0.2653 & 0.1353 \\
+\textbf{FewClick} &     &                       & \textbf{0.7522} & \textbf{0.7418} & \textbf{0.5938} & \textbf{0.2971} \\
+\midrule
+SAM       & \groupcell{$(3{+}1)$} & \groupcell{1,261} & 0.5903 & 0.5805 & 0.4143 & 0.1763 \\
+SAM-Med2D &             &                       & 0.5178 & 0.5323 & 0.5089 & 0.1680 \\
+WSI-SAM   &             &                       & 0.5623 & 0.5608 & 0.3976 & 0.1676 \\
+\textbf{FewClick} &     &                       & \textbf{0.8164} & \textbf{0.8159} & \textbf{0.6913} & \textbf{0.3324} \\
+\midrule
+SAM       & \groupcell{$(5{+}1)$} & \groupcell{885} & 0.6290 & 0.6243 & 0.4585 & 0.1956 \\
+SAM-Med2D &             &                     & 0.6050 & 0.6149 & 0.4706 & 0.1791 \\
+WSI-SAM   &             &                     & 0.6041 & 0.6057 & 0.4397 & 0.1764 \\
+\textbf{FewClick} &     &                     & \textbf{0.8425} & \textbf{0.8406} & \textbf{0.7178} & \textbf{0.3229} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\end{center}
+
+\clearpage
+\begin{center}
+\begin{minipage}{84mm}
+\setcounter{figure}{1}
+\centering
+\setlength{\unitlength}{1mm}
+\footnotesize
+\begin{picture}(82,58)
+  {\color{black!12}\put(12,8){\line(1,0){64}}}
+  {\color{black!12}\put(12,19.14){\line(1,0){64}}}
+  {\color{black!12}\put(12,30.29){\line(1,0){64}}}
+  {\color{black!12}\put(12,41.43){\line(1,0){64}}}
+  {\color{black!12}\put(12,47){\line(1,0){64}}}
+  \put(12,8){\line(1,0){64}}
+  \put(12,8){\line(0,1){39}}
+  \put(10,8){\makebox(0,0)[r]{0.2}}
+  \put(10,19.14){\makebox(0,0)[r]{0.4}}
+  \put(10,30.29){\makebox(0,0)[r]{0.6}}
+  \put(10,41.43){\makebox(0,0)[r]{0.8}}
+  \put(10,47){\makebox(0,0)[r]{0.9}}
+  \put(22,6){\makebox(0,0){$1{+}1$}}
+  \put(44,6){\makebox(0,0){$3{+}1$}}
+  \put(66,6){\makebox(0,0){$5{+}1$}}
+  \put(44,1){\makebox(0,0){Prompt budget}}
+  \put(1.5,28){\rotatebox{90}{\makebox(0,0){Global Dice}}}
+  {\color{samblue}\linethickness{0.38mm}
+   \qbezier(22,\ploty{\samone})(33,\plotmidy{\samone}{\samthree})(44,\ploty{\samthree})
+   \qbezier(44,\ploty{\samthree})(55,\plotmidy{\samthree}{\samfive})(66,\ploty{\samfive})
+   \put(22,\ploty{\samone}){\circle*{2}}
+   \put(44,\ploty{\samthree}){\circle*{2}}
+   \put(66,\ploty{\samfive}){\circle*{2}}
+   \put(\samoneLabelX,\fpeval{\ploty{\samone}+\samoneLabelYOffset}){\makebox(0,0){\plotlabel{samblue}{\samone}}}
+   \put(\samthreeLabelX,\fpeval{\ploty{\samthree}+\samthreeLabelYOffset}){\makebox(0,0){\plotlabel{samblue}{\samthree}}}
+   \put(\samfiveLabelX,\fpeval{\ploty{\samfive}+\samfiveLabelYOffset}){\makebox(0,0){\plotlabel{samblue}{\samfive}}}}
+  {\color{medorange}\linethickness{0.38mm}
+   \qbezier(22,\ploty{\medone})(33,\plotmidy{\medone}{\medthree})(44,\ploty{\medthree})
+   \qbezier(44,\ploty{\medthree})(55,\plotmidy{\medthree}{\medfive})(66,\ploty{\medfive})
+   \put(22,\ploty{\medone}){\circle*{2}}
+   \put(44,\ploty{\medthree}){\circle*{2}}
+   \put(66,\ploty{\medfive}){\circle*{2}}
+   \put(\medoneLabelX,\fpeval{\ploty{\medone}+\medoneLabelYOffset}){\makebox(0,0){\plotlabel{medorange}{\medone}}}
+   \put(\medthreeLabelX,\fpeval{\ploty{\medthree}+\medthreeLabelYOffset}){\makebox(0,0){\plotlabel{medorange}{\medthree}}}
+   \put(\medfiveLabelX,\fpeval{\ploty{\medfive}+\medfiveLabelYOffset}){\makebox(0,0){\plotlabel{medorange}{\medfive}}}}
+  {\color{wsigreen}\linethickness{0.38mm}
+   \qbezier(22,\ploty{\wsione})(33,\plotmidy{\wsione}{\wsithree})(44,\ploty{\wsithree})
+   \qbezier(44,\ploty{\wsithree})(55,\plotmidy{\wsithree}{\wsifive})(66,\ploty{\wsifive})
+   \put(22,\ploty{\wsione}){\circle*{2}}
+   \put(44,\ploty{\wsithree}){\circle*{2}}
+   \put(66,\ploty{\wsifive}){\circle*{2}}
+   \put(\wsioneLabelX,\fpeval{\ploty{\wsione}+\wsioneLabelYOffset}){\makebox(0,0){\plotlabel{wsigreen}{\wsione}}}
+   \put(\wsithreeLabelX,\fpeval{\ploty{\wsithree}+\wsithreeLabelYOffset}){\makebox(0,0){\plotlabel{wsigreen}{\wsithree}}}
+   \put(\wsifiveLabelX,\fpeval{\ploty{\wsifive}+\wsifiveLabelYOffset}){\makebox(0,0){\plotlabel{wsigreen}{\wsifive}}}}
+  {\color{fewred}\linethickness{0.55mm}
+   \qbezier(22,\ploty{\fewone})(33,\plotmidy{\fewone}{\fewthree})(44,\ploty{\fewthree})
+   \qbezier(44,\ploty{\fewthree})(55,\plotmidy{\fewthree}{\fewfive})(66,\ploty{\fewfive})
+   \put(22,\ploty{\fewone}){\circle*{2.5}}
+   \put(44,\ploty{\fewthree}){\circle*{2.5}}
+   \put(66,\ploty{\fewfive}){\circle*{2.5}}
+   \put(\fewoneLabelX,\fpeval{\ploty{\fewone}+\fewoneLabelYOffset}){\makebox(0,0){\plotlabel{fewred}{\fewone}}}
+   \put(\fewthreeLabelX,\fpeval{\ploty{\fewthree}+\fewthreeLabelYOffset}){\makebox(0,0){\plotlabel{fewred}{\fewthree}}}
+   \put(\fewfiveLabelX,\fpeval{\ploty{\fewfive}+\fewfiveLabelYOffset}){\makebox(0,0){\plotlabel{fewred}{\fewfive}}}}
+  {\color{samblue}\linethickness{0.38mm}\put(8,55){\line(1,0){6}}\put(11,55){\circle*{2}}}\put(16,55){\makebox(0,0)[l]{SAM}}
+  {\color{medorange}\linethickness{0.38mm}\put(35,55){\line(1,0){6}}\put(38,55){\circle*{2}}}\put(43,55){\makebox(0,0)[l]{SAM-Med2D}}
+  {\color{wsigreen}\linethickness{0.38mm}\put(8,51){\line(1,0){6}}\put(11,51){\circle*{2}}}\put(16,51){\makebox(0,0)[l]{WSI-SAM}}
+  {\color{fewred}\linethickness{0.55mm}\put(35,51){\line(1,0){6}}\put(38,51){\circle*{2.5}}}\put(43,51){\makebox(0,0)[l]{FewClick}}
+\end{picture}
+\captionof{figure}{Global Dice versus prompt budget on the common 885 occurrences (819 unique patches). Methods share targets, masks, negative points, and prefixes of the same frozen positive-point sequence.}
+\end{minipage}
+\end{center}
+
+\clearpage
+\begin{center}
+\begin{minipage}{84mm}
+\captionof{table}{Oracle-assisted whole-slide results on 10 WSIs and 12 tissues. The differing protocols are described in the text; values indicate attainable rather than strictly matched performance.}
+\centering\footnotesize
+\setlength{\tabcolsep}{2.6pt}\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{lccccc}
+\toprule
+Method & Macro & Macro & Macro & Macro & Micro \\
+       & Dice & mIoU & Prec. & Recall & Dice \\
+\midrule
+SAM       & 0.4082 & 0.3158 & 0.3474 & 0.6821 & 0.7000 \\
+SAM-Med2D & 0.3901 & 0.3095 & 0.4580 & 0.4966 & 0.6651 \\
+WSI-SAM   & 0.4342 & 0.3245 & 0.4892 & 0.4146 & 0.7418 \\
+\textbf{FewClick} & \textbf{0.7495} & \textbf{0.6383} & \textbf{0.7456} & \textbf{0.7676} & \textbf{0.9237} \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\end{center}
+
+\clearpage
+\begin{center}
+\begin{minipage}{84mm}
+\captionof{table}{Per-class whole-slide Dice. Best results are in bold.}
+\centering\footnotesize
+\setlength{\tabcolsep}{2.2pt}\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Tissue & FewClick & SAM & SAM-Med. & WSI-SAM \\
+\midrule
+Tumor epi. & \textbf{0.8859} & 0.5752 & 0.5356 & 0.4923 \\
+Tumor stroma & \textbf{0.8443} & 0.5551 & 0.4702 & 0.4164 \\
+Background & \textbf{0.9776} & 0.9030 & 0.8472 & 0.8524 \\
+Necrosis & \textbf{0.5590} & 0.2080 & 0.2590 & 0.2401 \\
+Normal gland & \textbf{0.6963} & 0.2243 & 0.3121 & 0.2394 \\
+Normal stroma & \textbf{0.6430} & 0.2749 & 0.2756 & 0.2463 \\
+Submucosa/serosa & \textbf{0.8500} & 0.5113 & 0.6762 & 0.5124 \\
+Muscle & \textbf{0.8611} & 0.6028 & 0.5521 & 0.4966 \\
+Lymph. aggregate & \textbf{0.7937} & 0.2795 & 0.3401 & 0.4003 \\
+Mucus & \textbf{0.6590} & 0.2204 & 0.3343 & 0.3072 \\
+Adipose & \textbf{0.6820} & 0.2894 & 0.3711 & 0.3979 \\
+Blood & \textbf{0.5419} & 0.1550 & 0.2078 & 0.2487 \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\end{center}
+
+\clearpage
+\begin{center}
+\begin{minipage}{84mm}
+\captionof{table}{Component ablations on 4,000 fixed validation episodes. $\Delta$ is the macro-Dice change from FewClick.}
+\centering\footnotesize
+\setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{lcccc}
+\toprule
+Variant & Macro & Micro & Boundary & $\Delta$ \\
+        & Dice  & Dice  & F1       & Macro \\
+\midrule
+FewClick & \textbf{0.7413} & \textbf{0.8138} & \textbf{0.3142} & -- \\
+Fine scale only & 0.6384 & 0.6929 & 0.2630 & $-0.1029$ \\
+No cell fusion & 0.5885 & 0.6543 & 0.2471 & $-0.1528$ \\
+Fixed SLIC regions & 0.5650 & 0.6482 & 0.1475 & $-0.1763$ \\
+Mean prompt prototypes & 0.7215 & 0.7970 & 0.3062 & $-0.0199$ \\
+\bottomrule
+\end{tabular}
+\end{minipage}
+\end{center}
+
+\end{document}

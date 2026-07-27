@@ -11,10 +11,45 @@ import sys
 import time
 
 import numpy as np
+import pyvips
 import torch
 import torch.nn.functional as F
 
 from benchmarks.v4.phase_1_multiscale.src.data import read_he_patch
+
+
+def read_he_patch_white_padded(
+    path: Path,
+    x_level0: int,
+    y_level0: int,
+    width_level0: int,
+    height_level0: int,
+    output_size: int,
+) -> np.ndarray:
+    """Read a fixed-center context, padding only outside-slide pixels with white."""
+    image = pyvips.Image.new_from_file(str(path), access="random")
+    if image.bands < 3:
+        raise ValueError(f"HE image has fewer than three channels: {path}")
+    image = image.extract_band(0, n=3)
+    x0 = max(0, int(x_level0))
+    y0 = max(0, int(y_level0))
+    x1 = min(image.width, int(x_level0) + int(width_level0))
+    y1 = min(image.height, int(y_level0) + int(height_level0))
+    if x1 <= x0 or y1 <= y0:
+        raise ValueError(f"requested context does not intersect HE bounds: {path}")
+    canvas = (pyvips.Image.black(int(width_level0), int(height_level0), bands=3) + 255).cast("uchar")
+    crop = image.crop(x0, y0, x1 - x0, y1 - y0)
+    canvas = canvas.insert(crop, x0 - int(x_level0), y0 - int(y_level0), expand=False)
+    resized = canvas.resize(float(output_size) / int(width_level0)).cast("uchar")
+    if (resized.width, resized.height) != (output_size, output_size):
+        raise RuntimeError(
+            f"padded resize produced {(resized.width, resized.height)}, expected {(output_size, output_size)}"
+        )
+    return np.ndarray(
+        buffer=resized.write_to_memory(),
+        dtype=np.uint8,
+        shape=(output_size, output_size, 3),
+    ).copy()
 
 
 def _verify_source(config: dict[str, Any]) -> tuple[Path, str]:
@@ -248,7 +283,9 @@ class WSISAMBackend:
         center_x, center_y = map(float, inputs["center_level0"])
         low_width, low_height = 2 * width, 2 * height
         low_x, low_y = int(round(center_x - low_width / 2)), int(round(center_y - low_height / 2))
-        return read_he_patch(Path(inputs["wsi_path"]), low_x, low_y, low_width, low_height, 1024)
+        return read_he_patch_white_padded(
+            Path(inputs["wsi_path"]), low_x, low_y, low_width, low_height, 1024
+        )
 
     def _encode(self, image: torch.Tensor, points: np.ndarray, labels: np.ndarray, box: np.ndarray | None):
         record: dict[str, torch.Tensor] = {"image": image.to(self.device)}

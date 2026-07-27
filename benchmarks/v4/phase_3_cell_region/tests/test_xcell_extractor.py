@@ -1,6 +1,21 @@
+import sys
+from unittest.mock import patch
+
 import numpy as np
 
-from benchmarks.v4.phase_3_cell_region.tools.extract_xcell_features import selected_cells_from_maps
+from benchmarks.v4.phase_3_cell_region.tools.extract_xcell_features import parse, selected_cells_from_maps
+
+
+def test_preprocess_mode_defaults_to_batched():
+    argv = [
+        "extract_xcell_features.py",
+        "--config", "config.yaml",
+        "--patch-index", "patches.parquet",
+        "--output-root", "output",
+        "--split", "val",
+    ]
+    with patch.object(sys, "argv", argv):
+        assert parse().preprocess_mode == "batched"
 
 
 def test_selected_cells_match_reference_order_and_keep_total_count():

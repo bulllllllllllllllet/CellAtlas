@@ -90,6 +90,54 @@ class SparseMessage(nn.Module):
         return self.norm2(x + self.ff(x))
 
 
+class SparseParentAttentionMessage(nn.Module):
+    """Content-adaptive message over a child's geometrically valid parents.
+
+    The edge list supplies a sparse spatial candidate set.  Learned query/key
+    compatibility chooses within that set; overlap mass is only an additive
+    log-bias, not the attention weight itself.
+    """
+
+    def __init__(self, dim: int):
+        super().__init__()
+        self.q = nn.Linear(dim, dim, bias=False)
+        self.k = nn.Linear(dim, dim, bias=False)
+        self.v = nn.Linear(dim, dim, bias=False)
+        self.proj = nn.Linear(dim, dim)
+        self.norm1 = nn.LayerNorm(dim)
+        self.ff = FeedForward(dim)
+        self.norm2 = nn.LayerNorm(dim)
+        self.last_attention_entropy: torch.Tensor | None = None
+        self.last_effective_parents: torch.Tensor | None = None
+
+    def forward_from_parents(
+        self,
+        child: torch.Tensor,
+        parent: torch.Tensor,
+        edge_index: torch.Tensor,
+        edge_weight: torch.Tensor,
+    ) -> torch.Tensor:
+        batch, n_child, top_k = edge_index.shape
+        safe_index = edge_index.clamp_min(0)
+        batch_ids = torch.arange(batch, device=parent.device)[:, None, None].expand(-1, n_child, top_k)
+        parent_keys = self.k(parent)[batch_ids, safe_index]
+        parent_values = self.v(parent)[batch_ids, safe_index]
+        valid = edge_index >= 0
+        query = self.q(child).unsqueeze(2)
+        score = (query * parent_keys).sum(-1) / (child.shape[-1] ** 0.5)
+        bias = edge_weight.to(dtype=score.dtype).clamp_min(1e-8).log()
+        score = (score + bias).masked_fill(~valid, torch.finfo(score.dtype).min)
+        weights = torch.softmax(score, dim=-1) * valid.to(dtype=score.dtype)
+        context = (weights.unsqueeze(-1) * parent_values).sum(2)
+        x = self.norm1(child + self.proj(context))
+        output = self.norm2(x + self.ff(x))
+        with torch.no_grad():
+            entropy = -(weights.clamp_min(1e-8) * weights.clamp_min(1e-8).log()).sum(-1)
+            self.last_attention_entropy = entropy.mean()
+            self.last_effective_parents = valid.sum(-1).float().mean()
+        return output
+
+
 class HierarchicalBlock(nn.Module):
     def __init__(self, dim: int):
         super().__init__()
@@ -98,7 +146,38 @@ class HierarchicalBlock(nn.Module):
         self.down_cm = SparseMessage(dim)
         self.down_mf = SparseMessage(dim)
 
-    def forward(self, fine, middle, coarse, fm_index, fm_weight, mc_index, mc_weight):
+    def forward_up(self, fine, middle, coarse, fm_index, fm_weight, mc_index, mc_weight):
+        """Propagate information strictly from fine to coarse scales.
+
+        ``fine_middle`` and ``middle_coarse`` edges are stored as child-to-parent
+        relations, so upward propagation aggregates children onto their parents.
+        Fine tokens intentionally remain unchanged in this direction-only pass.
+        """
+        middle = self.up_fm.forward_from_children(middle, fine, fm_index, fm_weight)
+        coarse = self.up_mc.forward_from_children(coarse, middle, mc_index, mc_weight)
+        return fine, middle, coarse
+
+    def forward_bidir(self, fine, middle, coarse, fm_index, fm_weight, mc_index, mc_weight):
+        """Run the fine-to-coarse pass followed by coarse-to-fine feedback."""
+        fine, middle, coarse = self.forward_up(
+            fine, middle, coarse, fm_index, fm_weight, mc_index, mc_weight
+        )
+        middle = self.down_cm.forward_from_parents(middle, coarse, mc_index, mc_weight)
+        fine = self.down_mf.forward_from_parents(fine, middle, fm_index, fm_weight)
+        return fine, middle, coarse
+
+
+class AttentionHierarchicalBlock(nn.Module):
+    """Bidirectional hierarchy with learned sparse downward parent attention."""
+
+    def __init__(self, dim: int):
+        super().__init__()
+        self.up_fm = SparseMessage(dim)
+        self.up_mc = SparseMessage(dim)
+        self.down_cm = SparseParentAttentionMessage(dim)
+        self.down_mf = SparseParentAttentionMessage(dim)
+
+    def forward_bidir(self, fine, middle, coarse, fm_index, fm_weight, mc_index, mc_weight):
         middle = self.up_fm.forward_from_children(middle, fine, fm_index, fm_weight)
         coarse = self.up_mc.forward_from_children(coarse, middle, mc_index, mc_weight)
         middle = self.down_cm.forward_from_parents(middle, coarse, mc_index, mc_weight)
@@ -120,6 +199,7 @@ class CrossScaleModel(nn.Module):
         "naive_concat",
         "hierarchical_up",
         "hierarchical_bidir",
+        "hierarchical_bidir_attention",
     )
 
     def __init__(self, variant: str, dim: int = 256, num_classes: int = 12, num_blocks: int = 1):
@@ -150,8 +230,9 @@ class CrossScaleModel(nn.Module):
                 nn.GELU(),
                 nn.LayerNorm(dim),
             )
-        elif variant in ("hierarchical_up", "hierarchical_bidir"):
-            self.blocks = nn.ModuleList([HierarchicalBlock(dim) for _ in range(num_blocks)])
+        elif variant in ("hierarchical_up", "hierarchical_bidir", "hierarchical_bidir_attention"):
+            block_type = AttentionHierarchicalBlock if variant == "hierarchical_bidir_attention" else HierarchicalBlock
+            self.blocks = nn.ModuleList([block_type(dim) for _ in range(num_blocks)])
         self.head = nn.Linear(dim, num_classes)
 
     def _add_scale(self, fine, middle, coarse):
@@ -190,13 +271,14 @@ class CrossScaleModel(nn.Module):
             tokens = self.fuse(torch.cat([self.fine_norm(fine), mid_ctx, coarse_ctx], dim=-1))
         elif self.variant == "hierarchical_up":
             for block in self.blocks:
-                middle = block.up_fm.forward_from_children(middle, fine, fm_index, fm_weight)
-                coarse = block.up_mc.forward_from_children(coarse, middle, mc_index, mc_weight)
-                middle = block.down_cm.forward_from_parents(middle, coarse, mc_index, mc_weight)
-                fine = block.down_mf.forward_from_parents(fine, middle, fm_index, fm_weight)
+                fine, middle, coarse = block.forward_up(
+                    fine, middle, coarse, fm_index, fm_weight, mc_index, mc_weight
+                )
             tokens = self.fine_norm(fine)
         else:
             for block in self.blocks:
-                fine, middle, coarse = block(fine, middle, coarse, fm_index, fm_weight, mc_index, mc_weight)
+                fine, middle, coarse = block.forward_bidir(
+                    fine, middle, coarse, fm_index, fm_weight, mc_index, mc_weight
+                )
             tokens = self.fine_norm(fine)
         return self.head(tokens)

@@ -18,6 +18,7 @@ from benchmarks.v4.phase_6_mask_decoder.src.joint_model import (
     JointPromptMaskModel,
     ParentContextAdapter,
     assignment_geometry,
+    build_online_cross_scale_edges,
     gather_prompt_tokens,
     online_region_binary_target,
     remap_prompt_tokens,
@@ -46,6 +47,7 @@ class TinyPhase2(torch.nn.Module):
         return {
             "assignment_low": assignment_low,
             "assignment": assignment_low,
+            "embedding": embedding,
             "region_tokens": tokens,
             "semantic_logits": features.new_zeros(features.shape[0], 2, *output_size),
         }
@@ -92,6 +94,25 @@ def make_batch(batch_size=2, regions=4, cell_dim=4):
 
 
 class JointPixelTests(unittest.TestCase):
+    def test_mean_prototype_pool_ignores_padding_and_differs_from_set_encoder(self):
+        phase2 = TinyPhase2(); cell = CellToRegionAttention(16, 4)
+        prompt = PromptRegionModel(dim=16, heads=4, set_layers=1, dropout=0.0)
+        model = JointPromptMaskModel(
+            phase2, cell, prompt, region_dim=16, graph_heads=4, graph_layers=1,
+            graph_neighbours=2, graph_dropout=0.0, train_phase2_embedding=False,
+            train_phase2_assignment=False, train_cell=False, train_prompt=True,
+            train_decoder=True, prompt_set_variant="mean_prototype",
+        )
+        batch = make_batch(); model.eval()
+        output = model(batch, prompt_teacher=FrozenPromptTeacher(model.decoder.prompt_model))
+        altered = make_batch(); altered.update(batch)
+        altered["positive_tokens"] = batch["positive_tokens"].clone()
+        altered["positive_tokens"][:, 1] = 1e4
+        other = model(altered, prompt_teacher=FrozenPromptTeacher(model.decoder.prompt_model))
+        torch.testing.assert_close(output["task_token"], other["task_token"])
+        self.assertEqual(model.decoder.prompt_model.prompt_pool_variant, "mean_prototype")
+        self.assertFalse(any(parameter.requires_grad for parameter in model.decoder.prompt_model.set_pool.parameters()))
+
     def test_j7_trains_only_backbone_layer4_and_decoder(self):
         phase2 = TinyPhase2(); cell = CellToRegionAttention(16, 4)
         prompt = PromptRegionModel(dim=16, heads=4, set_layers=1, dropout=0.0)
@@ -180,6 +201,62 @@ class JointPixelTests(unittest.TestCase):
             for parameter in model.parent_context.parameters() if parameter.grad is not None
         ), 0.0)
 
+    def test_phase4_bidir_uses_online_multiscale_tokens_and_has_gradients(self):
+        phase2 = TinyPhase2(); cell = CellToRegionAttention(16, 4)
+        prompt = PromptRegionModel(dim=16, heads=4, set_layers=1, dropout=0.0)
+        model = JointPromptMaskModel(
+            phase2, cell, prompt, region_dim=16, graph_heads=4, graph_layers=1,
+            graph_neighbours=2, graph_dropout=0.0, train_phase2_embedding=False,
+            train_phase2_assignment=False, train_cell=False, train_prompt=False,
+            train_decoder=False, cross_scale_variant="hierarchical_bidir",
+            cross_scale_blocks=1, cross_scale_top_k=4,
+        )
+        batch = make_batch()
+        batch.update({
+            "image_5x": torch.randn(2, 3, 8, 8),
+            "image_2p5x": torch.randn(2, 3, 8, 8),
+            "box_10x": [(100, 100, 100, 100)] * 2,
+            "box_5x": [(50, 50, 200, 200)] * 2,
+            "box_2p5x": [(0, 0, 400, 400)] * 2,
+        })
+        output = model(batch)
+        self.assertIn("cross_scale_residual_norm", output)
+        self.assertEqual(output["fine_middle_edge_index"].shape, (2, 4, 4))
+        self.assertTrue(torch.allclose(output["fine_middle_edge_weight"].sum(-1), torch.ones(2, 4)))
+        output["logits"].square().mean().backward()
+        self.assertGreater(sum(
+            float(parameter.grad.abs().sum())
+            for block in model.cross_scale_blocks for parameter in block.parameters()
+            if parameter.grad is not None
+        ), 0.0)
+
+    def test_phase4_attention_and_shuffled_edges_are_trainable(self):
+        phase2 = TinyPhase2(); cell = CellToRegionAttention(16, 4)
+        prompt = PromptRegionModel(dim=16, heads=4, set_layers=1, dropout=0.0)
+        model = JointPromptMaskModel(
+            phase2, cell, prompt, region_dim=16, graph_heads=4, graph_layers=1,
+            graph_neighbours=2, graph_dropout=0.0, train_phase2_embedding=False,
+            train_phase2_assignment=False, train_cell=False, train_prompt=False,
+            train_decoder=False, cross_scale_variant="hierarchical_bidir_attention",
+            cross_scale_blocks=1, cross_scale_top_k=4, cross_scale_edge_mode="shuffled",
+        )
+        batch = make_batch()
+        batch.update({
+            "image_5x": torch.randn(2, 3, 8, 8), "image_2p5x": torch.randn(2, 3, 8, 8),
+            "box_10x": [(100, 100, 100, 100)] * 2,
+            "box_5x": [(50, 50, 200, 200)] * 2,
+            "box_2p5x": [(0, 0, 400, 400)] * 2,
+        })
+        output = model(batch)
+        self.assertEqual(output["fine_middle_edge_index"].shape, (2, 4, 4))
+        self.assertTrue(torch.isfinite(output["logits"]).all())
+        output["logits"].square().mean().backward()
+        self.assertGreater(sum(
+            float(parameter.grad.abs().sum())
+            for block in model.cross_scale_blocks for parameter in block.parameters()
+            if parameter.grad is not None
+        ), 0.0)
+
     def test_geometry_is_normalized_and_differentiable(self):
         assignment = torch.rand(2, 4, 5, 6, requires_grad=True).softmax(1)
         xy, area = assignment_geometry(assignment)
@@ -222,6 +299,21 @@ class JointPixelTests(unittest.TestCase):
         )
         torch.testing.assert_close(target, torch.tensor([[1, 0]]))
         torch.testing.assert_close(purity, torch.tensor([[0.75, 0.75]]))
+
+    def test_fixed_slic_replaces_learned_assignment(self):
+        phase2 = TinyPhase2(); cell = CellToRegionAttention(16, 4)
+        prompt = PromptRegionModel(dim=16, heads=4, set_layers=1, dropout=0.0)
+        model = JointPromptMaskModel(
+            phase2, cell, prompt, region_dim=16, graph_heads=4, graph_layers=1,
+            graph_neighbours=2, graph_dropout=0.0, train_phase2_embedding=False,
+            train_phase2_assignment=False, train_cell=False, train_prompt=False,
+            train_decoder=False, regionization_variant="fixed_slic",
+        )
+        batch = make_batch(); labels = torch.zeros(2, 8, 8, dtype=torch.long); labels[:, :, 4:] = 1
+        batch["fixed_slic"] = labels
+        output = model(batch)
+        torch.testing.assert_close(output["assignment"].sum(1), torch.ones(2, 8, 8))
+        self.assertTrue(torch.equal(output["assignment"].argmax(1), labels))
 
     def test_prompt_separation_penalizes_shared_online_region(self):
         batch = {

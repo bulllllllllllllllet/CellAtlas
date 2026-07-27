@@ -45,7 +45,10 @@ def main() -> None:
         raise ValueError(f"occurrence count {len(source)} != expected {args.expected_episodes}")
     repeated_occurrences = int(source["episode_index"].duplicated().sum())
     geometry = pd.read_parquet(args.prompt_geometry)
-    required_geometry = {"episode_index", "positive_box_10x", "source_region_ids"}
+    required_geometry = {
+        "episode_index", "positive_points_10x", "negative_points_10x",
+        "positive_box_10x", "source_region_ids", "negative_source_region_ids",
+    }
     if required_geometry - set(geometry):
         raise ValueError(f"prompt geometry misses {sorted(required_geometry - set(geometry))}")
     if geometry["episode_index"].duplicated().any():
@@ -71,11 +74,19 @@ def main() -> None:
         if int(item["target_class"]) != int(occurrence.target_class):
             raise RuntimeError(f"target class mismatch at episode_index={index}")
         patch = patches.loc[str(item["patch_id"])]
-        positive = item["positive_xy"][item["positive_mask"]].numpy()
-        negative = item["negative_xy"][item["negative_mask"]].numpy()
-        size = np.asarray([float(patch.width_10x), float(patch.height_10x)], dtype=np.float32)
-        positive *= size; negative *= size
         geo = geometry.loc[index]
+        positive = np.asarray(json.loads(geo.positive_points_10x), dtype=np.float32)
+        negative = np.asarray(json.loads(geo.negative_points_10x), dtype=np.float32)
+        positive_slots = item["positive_slot_indices"][item["positive_mask"]].numpy().astype(np.int64)
+        negative_slots = item["negative_slot_indices"][item["negative_mask"]].numpy().astype(np.int64)
+        frozen_positive_slots = np.asarray(json.loads(geo.source_region_ids), dtype=np.int64)
+        frozen_negative_slots = np.asarray(json.loads(geo.negative_source_region_ids), dtype=np.int64)
+        if not np.array_equal(positive_slots, frozen_positive_slots):
+            raise RuntimeError(f"positive source slots changed at episode_index={index}")
+        if not np.array_equal(negative_slots, frozen_negative_slots):
+            raise RuntimeError(f"negative source slots changed at episode_index={index}")
+        if positive.shape != (len(positive_slots), 2) or negative.shape != (len(negative_slots), 2):
+            raise RuntimeError(f"frozen point count mismatch at episode_index={index}")
         box = geo.positive_box_10x
         if str(item["prompt_size"]) != "point" and (box is None or (isinstance(box, float) and np.isnan(box))):
             raise ValueError(f"missing frozen box for episode_index={index}")

@@ -27,6 +27,7 @@ from benchmarks.v4.phase_1_multiscale.src.common import load_config
 from benchmarks.v4.phase_3_cell_region.train_phase3 import region_labels
 from benchmarks.v4.phase_4_cross_scale.src.export_tokens import IMAGENET_MEAN, IMAGENET_STD
 from benchmarks.v4.phase_5_prompt_encoder.src.dataset import EpisodeBalancedSampler, PromptEpisodeDataset
+from benchmarks.v4.baseline.common import parse_json_array, validate_episode_manifest
 from benchmarks.v4.phase_6_mask_decoder.src.evaluation import (
     binary_counts,
     boundary_f1,
@@ -85,6 +86,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--split", choices=("val", "test"), default="val")
     parser.add_argument("--cell-routing", type=Path, required=True)
     parser.add_argument("--validation-episodes", type=int, default=4000)
+    parser.add_argument("--episode-index", type=int)
+    parser.add_argument("--prompt-geometry", type=Path)
+    parser.add_argument("--episode-manifest", type=Path,
+                        help="Frozen occurrence manifest; overrides sampled prompt count, coordinates, and slots.")
     parser.add_argument("--batch-size-per-gpu", type=int, default=2)
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--boundary-tolerance", type=int, default=2)
@@ -114,6 +119,62 @@ class IndexedEpisodes(Dataset):
     def __getitem__(self, position: int) -> dict:
         index = self.indices[position]
         item = self.base[index]; item["episode_index"] = torch.tensor(index, dtype=torch.long)
+        return item
+
+
+class FrozenGeometryEpisodes(Dataset):
+    """Apply audited frozen point geometry to one or more base episodes."""
+    def __init__(self, base: Dataset, geometry: pd.DataFrame):
+        self.base = base; self.geometry = geometry.set_index("episode_index")
+    def __len__(self) -> int: return len(self.base)
+    def __getitem__(self, index: int) -> dict:
+        item = self.base[index]
+        if int(index) not in self.geometry.index: return item
+        row = self.geometry.loc[int(index)]
+        positive = np.asarray(json.loads(row.positive_points_10x), np.float32)
+        negative = np.asarray(json.loads(row.negative_points_10x), np.float32)
+        if len(positive) != int(item["positive_mask"].sum()) or len(negative) != int(item["negative_mask"].sum()):
+            raise ValueError(f"frozen prompt count mismatch at episode_index={index}")
+        height, width = item["pixel_gt"].shape
+        item["positive_xy"][item["positive_mask"]] = torch.from_numpy(positive / np.asarray([width, height], np.float32))
+        item["negative_xy"][item["negative_mask"]] = torch.from_numpy(negative / np.asarray([width, height], np.float32))
+        return item
+
+
+class ManifestEpisodes(Dataset):
+    """Replay each frozen occurrence with its exact point count and slot identity."""
+    def __init__(self, base: JointPixelEpisodeDataset, manifest: pd.DataFrame):
+        self.base = base
+        self.manifest = manifest.sort_values("occurrence_order").reset_index(drop=True)
+
+    def __len__(self) -> int:
+        return len(self.manifest)
+
+    def __getitem__(self, position: int) -> dict:
+        row = self.manifest.iloc[int(position)]
+        episode_index = int(row.episode_index)
+        item = self.base[episode_index]
+        positive = parse_json_array(row.positive_points_10x, 2)
+        negative = parse_json_array(row.negative_points_10x, 2)
+        positive_slots = np.asarray(json.loads(row.source_region_ids), dtype=np.int64)
+        negative_slots = np.asarray(json.loads(row.negative_source_region_ids), dtype=np.int64)
+        if len(positive) != len(positive_slots) or len(negative) != len(negative_slots):
+            raise ValueError(f"manifest point/slot mismatch for occurrence {row.occurrence_id}")
+        if len(positive) > len(item["positive_mask"]) or len(negative) > len(item["negative_mask"]):
+            raise ValueError(f"manifest prompt count exceeds model capacity for occurrence {row.occurrence_id}")
+        height, width = item["pixel_gt"].shape
+        scale = np.asarray([width, height], np.float32)
+        item["positive_xy"].zero_(); item["negative_xy"].zero_()
+        item["positive_mask"].fill_(False); item["negative_mask"].fill_(False)
+        item["positive_slot_indices"].fill_(-1); item["negative_slot_indices"].fill_(-1)
+        item["positive_xy"][:len(positive)] = torch.from_numpy(positive / scale)
+        item["negative_xy"][:len(negative)] = torch.from_numpy(negative / scale)
+        item["positive_mask"][:len(positive)] = True; item["negative_mask"][:len(negative)] = True
+        item["positive_slot_indices"][:len(positive)] = torch.from_numpy(positive_slots)
+        item["negative_slot_indices"][:len(negative)] = torch.from_numpy(negative_slots)
+        item["prompt_size"] = "point"; item["prompt_size_id"] = torch.tensor(0, dtype=torch.long)
+        item["target_class"] = torch.tensor(int(row.target_class), dtype=torch.long)
+        item["episode_index"] = torch.tensor(episode_index, dtype=torch.long)
         return item
 
 
@@ -151,7 +212,7 @@ def construct_model(
         missing, unexpected = model.load_state_dict(payload["model"], strict=False)
         missing_set = set(missing); unexpected_set = set(unexpected)
         allowed_missing = PARENT_CONTEXT_STATE_KEYS if allow_missing_parent_context else frozenset()
-        if missing_set != allowed_missing or unexpected_set:
+        if not missing_set.issubset(allowed_missing) or unexpected_set:
             raise RuntimeError(
                 f"joint checkpoint load mismatch missing={sorted(missing_set)} "
                 f"unexpected={sorted(unexpected_set)} allowed_missing={sorted(allowed_missing)}"
@@ -470,13 +531,32 @@ def main() -> None:
         tuple(cfg["data"]["class_ids"]), int(cfg["project"]["seed"]) + 10_000_019,
         epoch_size=min(int(args.validation_episodes), len(episodes)),
     )
-    selected = list(iter(sampler)); local_indices = selected[rank::world]
+    selected = list(iter(sampler))
+    if args.episode_index is not None:
+        if args.episode_index < 0 or args.episode_index >= len(episodes): raise IndexError(args.episode_index)
+        selected = [int(args.episode_index)]
+    local_indices = selected[rank::world]
     full = JointPixelEpisodeDataset(
         episodes, args.patch_index, args.cell_routing, p2cfg["data"]["class_map"],
         int(cfg["data"]["ignore_index"]), int(cfg["data"]["max_cells_per_patch"]),
         include_parent_context=bool(cfg["model"].get("train_parent_context", False)),
     )
-    local = IndexedEpisodes(full, local_indices)
+    if args.prompt_geometry is not None and args.episode_manifest is not None:
+        raise ValueError("--prompt-geometry and --episode-manifest are mutually exclusive")
+    if args.prompt_geometry is not None:
+        full = FrozenGeometryEpisodes(full, pd.read_parquet(args.prompt_geometry))
+    if args.episode_manifest is not None:
+        manifest = pd.read_parquet(args.episode_manifest).sort_values("occurrence_order").reset_index(drop=True)
+        if len(manifest) > int(args.validation_episodes):
+            manifest = manifest.iloc[:int(args.validation_episodes)].copy()
+            manifest["occurrence_order"] = np.arange(len(manifest), dtype=np.int64)
+        audit = validate_episode_manifest(manifest, args.split)
+        full = ManifestEpisodes(full, manifest)
+        selected = list(range(len(full)))
+        local_indices = selected[rank::world]
+        local = IndexedEpisodes(full, local_indices)
+    else:
+        local = IndexedEpisodes(full, local_indices)
     collate = functools.partial(collate_joint_pixel_episodes, max_cells=int(cfg["data"]["max_cells_per_patch"]))
     loader_args = dict(batch_size=int(args.batch_size_per_gpu), num_workers=int(args.num_workers), pin_memory=True, collate_fn=collate)
     if args.num_workers:
@@ -637,7 +717,7 @@ def main() -> None:
             "inputs": {key: str(getattr(args, key)) for key in (
                 "config", "phase2_config", "phase5_config", "phase2_checkpoint", "cell_checkpoint",
                 "phase5_checkpoint", "baseline_joint_checkpoint", "joint_checkpoint", "cache_index", "label_index", "patch_index",
-                "eligibility_index", "cell_routing",
+                "eligibility_index", "cell_routing", "episode_manifest",
             )},
             "reproducibility": {"command": [sys.executable, *sys.argv], "source_sha256": source_hashes()},
         })
@@ -651,6 +731,13 @@ def main() -> None:
                     batch = move_batch(collate([item]), device)
                     with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
                         baseline_output = baseline(batch); joint_output = joint(batch)
+                    np.savez_compressed(output / f"prediction_arrays_{episode_index:06d}.npz",
+                        probability=joint_output["pixel_probability"][0].float().cpu().numpy(),
+                        binary_mask=(joint_output["pixel_probability"][0] >= 0.5).cpu().numpy(),
+                        target_mask=(batch["pixel_gt"][0] == batch["target_class"][0]).cpu().numpy(),
+                        image=denormalize_image(batch["image"][0]),
+                        positive_points=batch["positive_xy"][0][batch["positive_mask"][0]].cpu().numpy() * [batch["image"].shape[-1], batch["image"].shape[-2]],
+                        negative_points=batch["negative_xy"][0][batch["negative_mask"][0]].cpu().numpy() * [batch["image"].shape[-1], batch["image"].shape[-2]])
                     filename = f"{group_name}_c{int(row['target_class']):02d}_{row['prompt_size']}_{episode_index:06d}.png"
                     render_panel(output / "panels" / filename, batch, baseline_output, joint_output, row.to_dict(), class_names[int(row["target_class"])])
                     panel_records.append({"group": group_name, "episode_index": episode_index, "path": f"panels/{filename}", **row.to_dict()})

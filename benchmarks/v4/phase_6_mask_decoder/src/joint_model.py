@@ -9,7 +9,8 @@ import torch.nn as nn
 
 from benchmarks.v4.phase_2_region_encoder.src.model import DeepRegionEncoder, spatial_region_assignment
 from benchmarks.v4.phase_3_cell_region.src.model import CellToRegionAttention, sample_assignment_at_cells
-from benchmarks.v4.phase_4_cross_scale.src.model import gather_parents
+from benchmarks.v4.phase_4_cross_scale.src.geometry import edge_invariants, parent_child_edges
+from benchmarks.v4.phase_4_cross_scale.src.model import AttentionHierarchicalBlock, HierarchicalBlock, gather_parents
 from benchmarks.v4.phase_5_prompt_encoder.src.model import PromptRegionModel
 from benchmarks.v4.phase_6_mask_decoder.src.model import ContextAwareMaskDecoder, project_region_probabilities
 
@@ -167,41 +168,67 @@ class FrozenPromptTeacher(nn.Module):
         return self.model(batch)
 
 
+def build_online_cross_scale_edges(
+    fine_assignment: torch.Tensor,
+    middle_assignment: torch.Tensor,
+    coarse_assignment: torch.Tensor,
+    box_10x: list[tuple[int, int, int, int]],
+    box_5x: list[tuple[int, int, int, int]],
+    box_2p5x: list[tuple[int, int, int, int]],
+    top_k: int,
+    edge_mode: str = "physical",
+    shuffle_seed: int = 20260725,
+) -> dict[str, torch.Tensor]:
+    """Build audited, detached physical-overlap topology from current assignments.
+
+    Topology is intentionally non-differentiable; token messages and all three
+    encoders remain fully differentiable.  Rebuilding it per forward prevents
+    stale cached parent tokens or edges from being mixed with a fine-tuned
+    Phase-2 encoder.
+    """
+    if not (fine_assignment.shape[0] == middle_assignment.shape[0] == coarse_assignment.shape[0] == len(box_10x) == len(box_5x) == len(box_2p5x)):
+        raise ValueError("online cross-scale assignments/boxes have incompatible batch size")
+    if edge_mode not in ("physical", "shuffled"):
+        raise ValueError(f"unsupported cross-scale edge_mode={edge_mode}")
+    packed = {name: [] for name in ("fine_middle_edge_index", "fine_middle_edge_weight", "middle_coarse_edge_index", "middle_coarse_edge_weight")}
+    for index in range(fine_assignment.shape[0]):
+        fm = parent_child_edges(fine_assignment[index].detach().float().cpu().numpy(), box_10x[index], middle_assignment[index].detach().float().cpu().numpy(), box_5x[index], top_k=top_k)
+        mc = parent_child_edges(middle_assignment[index].detach().float().cpu().numpy(), box_5x[index], coarse_assignment[index].detach().float().cpu().numpy(), box_2p5x[index], top_k=top_k)
+        for name, payload in (("fine_middle", fm), ("middle_coarse", mc)):
+            report = edge_invariants(payload)
+            if not report["passed"]:
+                raise RuntimeError(f"online {name} edge invariant failed for batch item {index}: {report}")
+        if edge_mode == "shuffled":
+            # A deterministic parent-slot permutation preserves every child's
+            # edge count and overlap masses while destroying physical identity.
+            for offset, payload in enumerate((fm, mc)):
+                generator = torch.Generator(device="cpu").manual_seed(int(shuffle_seed) + 2 * index + offset)
+                permutation = torch.randperm(payload["edge_index"].max() + 1, generator=generator).numpy()
+                valid = payload["edge_index"] >= 0
+                payload["edge_index"][valid] = permutation[payload["edge_index"][valid]]
+                report = edge_invariants(payload)
+                if not report["passed"]:
+                    raise RuntimeError(f"shuffled edge invariant failed for batch item {index}: {report}")
+        packed["fine_middle_edge_index"].append(torch.from_numpy(fm["edge_index"].astype("int64")))
+        packed["fine_middle_edge_weight"].append(torch.from_numpy(fm["edge_weight"]))
+        packed["middle_coarse_edge_index"].append(torch.from_numpy(mc["edge_index"].astype("int64")))
+        packed["middle_coarse_edge_weight"].append(torch.from_numpy(mc["edge_weight"]))
+    return {name: torch.stack(values).to(device=fine_assignment.device) for name, values in packed.items()}
+
+
 class ParentContextAdapter(nn.Module):
-    """Zero-gated middle/coarse parent context for online fine tokens."""
+    """Deprecated J10 cache adapter, retained only to read historical checkpoints."""
 
     def __init__(self, dim: int):
         super().__init__()
-        self.fuse = nn.Sequential(
-            nn.LayerNorm(dim * 2),
-            nn.Linear(dim * 2, dim),
-            nn.GELU(),
-            nn.Linear(dim, dim),
-        )
+        self.fuse = nn.Sequential(nn.LayerNorm(dim * 2), nn.Linear(dim * 2, dim), nn.GELU(), nn.Linear(dim, dim))
         self.gate = nn.Parameter(torch.zeros(()))
 
     def forward(self, fine: torch.Tensor, batch: dict[str, torch.Tensor]) -> torch.Tensor:
-        required = (
-            "middle_tokens", "coarse_tokens",
-            "fine_middle_edge_index", "fine_middle_edge_weight",
-            "middle_coarse_edge_index", "middle_coarse_edge_weight",
-        )
-        missing = [key for key in required if key not in batch]
-        if missing:
-            raise ValueError(f"parent context batch misses {missing}")
-        middle = batch["middle_tokens"].to(dtype=fine.dtype)
-        coarse = batch["coarse_tokens"].to(dtype=fine.dtype)
-        middle_for_fine = gather_parents(
-            middle, batch["fine_middle_edge_index"], batch["fine_middle_edge_weight"]
-        )
-        coarse_for_middle = gather_parents(
-            coarse, batch["middle_coarse_edge_index"], batch["middle_coarse_edge_weight"]
-        )
-        coarse_for_fine = gather_parents(
-            coarse_for_middle, batch["fine_middle_edge_index"], batch["fine_middle_edge_weight"]
-        )
-        residual = self.fuse(torch.cat([middle_for_fine, coarse_for_fine], dim=-1))
-        return fine + torch.tanh(self.gate).to(fine.dtype) * residual
+        middle_for_fine = gather_parents(batch["middle_tokens"].to(fine.dtype), batch["fine_middle_edge_index"], batch["fine_middle_edge_weight"])
+        coarse_for_middle = gather_parents(batch["coarse_tokens"].to(fine.dtype), batch["middle_coarse_edge_index"], batch["middle_coarse_edge_weight"])
+        coarse_for_fine = gather_parents(coarse_for_middle, batch["fine_middle_edge_index"], batch["fine_middle_edge_weight"])
+        return fine + torch.tanh(self.gate).to(fine.dtype) * self.fuse(torch.cat([middle_for_fine, coarse_for_fine], -1))
 
 
 @torch.no_grad()
@@ -263,6 +290,14 @@ class JointPromptMaskModel(nn.Module):
         train_decoder: bool = True,
         train_parent_context: bool = False,
         train_backbone_layer4: bool = False,
+        cross_scale_variant: str = "fine_only",
+        cross_scale_blocks: int = 1,
+        cross_scale_top_k: int = 4,
+        cross_scale_edge_mode: str = "physical",
+        cross_scale_shuffle_seed: int = 20260725,
+        use_cell_branch: bool = True,
+        regionization_variant: str = "learned",
+        prompt_set_variant: str = "set_encoder",
         num_classes: int = 12,
         ignore_index: int = 255,
     ):
@@ -273,6 +308,13 @@ class JointPromptMaskModel(nn.Module):
         self.train_cell = bool(train_cell); self.train_prompt = bool(train_prompt)
         self.train_decoder = bool(train_decoder); self.train_parent_context = bool(train_parent_context)
         self.train_backbone_layer4 = bool(train_backbone_layer4)
+        self.use_cell_branch = bool(use_cell_branch)
+        if regionization_variant not in ("learned", "fixed_slic"):
+            raise ValueError(f"unsupported regionization_variant={regionization_variant}")
+        self.regionization_variant = regionization_variant
+        if prompt_set_variant not in ("set_encoder", "mean_prototype"):
+            raise ValueError(f"unsupported prompt_set_variant={prompt_set_variant}")
+        self.prompt_set_variant = prompt_set_variant
         self.num_classes = int(num_classes); self.ignore_index = int(ignore_index)
 
         self.phase2.requires_grad_(False)
@@ -289,10 +331,35 @@ class JointPromptMaskModel(nn.Module):
         )
         self.decoder.requires_grad_(self.train_decoder)
         self.decoder.prompt_model.requires_grad_(False)
+        self.decoder.prompt_model.prompt_pool_variant = self.prompt_set_variant
         if self.train_prompt:
             self.decoder.prompt_model.matcher.requires_grad_(True)
             self.decoder.prompt_model.task_projection.requires_grad_(True)
-            self.decoder.prompt_model.set_pool.encoder.layers[-1].requires_grad_(True)
+            if self.prompt_set_variant == "set_encoder":
+                self.decoder.prompt_model.set_pool.encoder.layers[-1].requires_grad_(True)
+            else:
+                self.decoder.prompt_model.task_mlp.requires_grad_(True)
+                self.decoder.prompt_model.region_prompt_attention.requires_grad_(True)
+                self.decoder.prompt_model.task_aware_norm.requires_grad_(True)
+        if cross_scale_variant not in ("fine_only", "hierarchical_bidir", "hierarchical_bidir_attention", "hierarchical_up"):
+            raise ValueError(f"unsupported joint cross_scale_variant={cross_scale_variant}")
+        if cross_scale_variant == "hierarchical_up":
+            raise ValueError("hierarchical_up cannot be the Fine segmentation route; use hierarchical_bidir")
+        if int(cross_scale_blocks) < 1:
+            raise ValueError("cross_scale_blocks must be >= 1")
+        if int(cross_scale_top_k) < 1:
+            raise ValueError("cross_scale_top_k must be >= 1")
+        self.cross_scale_variant = cross_scale_variant
+        self.cross_scale_top_k = int(cross_scale_top_k)
+        if cross_scale_edge_mode not in ("physical", "shuffled"):
+            raise ValueError(f"unsupported cross_scale_edge_mode={cross_scale_edge_mode}")
+        self.cross_scale_edge_mode = cross_scale_edge_mode
+        self.cross_scale_shuffle_seed = int(cross_scale_shuffle_seed)
+        block_type = AttentionHierarchicalBlock if cross_scale_variant == "hierarchical_bidir_attention" else HierarchicalBlock
+        self.cross_scale_blocks = (
+            nn.ModuleList([block_type(region_dim) for _ in range(int(cross_scale_blocks))])
+            if cross_scale_variant in ("hierarchical_bidir", "hierarchical_bidir_attention") else None
+        )
         self.parent_context = ParentContextAdapter(region_dim) if self.train_parent_context else None
 
     def train(self, mode: bool = True):
@@ -317,16 +384,61 @@ class JointPromptMaskModel(nn.Module):
         phase2 = self.phase2.forward_from_features(
             features, batch["image"].shape[-2:], return_full_assignment=True, return_tokens=True
         )
+        if self.regionization_variant == "fixed_slic":
+            if "fixed_slic" not in batch:
+                raise ValueError("fixed_slic regionization requires batch['fixed_slic']")
+            labels = batch["fixed_slic"].long()
+            if labels.shape != batch["image"].shape[:1] + batch["image"].shape[-2:]:
+                raise ValueError(f"fixed SLIC shape {tuple(labels.shape)} does not match image {tuple(batch['image'].shape)}")
+            regions = int(phase2["assignment_low"].shape[1])
+            if labels.min() < 0 or labels.max() >= regions:
+                raise ValueError(f"fixed SLIC labels outside [0,{regions})")
+            assignment = torch.nn.functional.one_hot(labels, regions).permute(0, 3, 1, 2).to(phase2["embedding"].dtype)
+            assignment_low = torch.nn.functional.interpolate(assignment, size=phase2["assignment_low"].shape[-2:], mode="nearest")
+            mass = assignment_low.sum((2, 3)).clamp_min(1e-6)
+            phase2.update({
+                "assignment": assignment,
+                "assignment_low": assignment_low,
+                "region_tokens": torch.einsum("bkhw,bdhw->bkd", assignment_low, phase2["embedding"]) / mass.unsqueeze(-1),
+            })
         assignment_low = phase2["assignment_low"]
-        cell_mass = sample_assignment_at_cells(assignment_low, batch["cells"])
-        cell = self.cell(
-            phase2["region_tokens"], cell_mass, batch["cells"], batch["cell_valid"], batch["total_cell_count"].float()
-        )
+        if self.use_cell_branch:
+            cell_mass = sample_assignment_at_cells(assignment_low, batch["cells"])
+            cell = self.cell(
+                phase2["region_tokens"], cell_mass, batch["cells"], batch["cell_valid"], batch["total_cell_count"].float()
+            )
+            fused_tokens = cell["fused_tokens"]
+            region_cell_count = cell["region_cell_count"]
+        else:
+            fused_tokens = phase2["region_tokens"]
+            region_cell_count = phase2["region_tokens"].new_zeros(phase2["region_tokens"].shape[:2])
         xy, area = assignment_geometry(assignment_low)
-        contextual_tokens = (
-            self.parent_context(cell["fused_tokens"], batch)
-            if self.parent_context is not None else cell["fused_tokens"]
-        )
+        contextual_tokens = self.parent_context(fused_tokens, batch) if self.parent_context is not None else fused_tokens
+        edge_payload = None
+        if self.cross_scale_blocks is not None:
+            required = ("image_5x", "image_2p5x", "box_10x", "box_5x", "box_2p5x")
+            missing = [key for key in required if key not in batch]
+            if missing:
+                raise ValueError(f"online cross-scale batch misses {missing}")
+            middle_phase2 = self.phase2.forward_from_features(
+                self.phase2.extract_backbone_features(batch["image_5x"]), batch["image_5x"].shape[-2:], return_full_assignment=False, return_tokens=True
+            )
+            coarse_phase2 = self.phase2.forward_from_features(
+                self.phase2.extract_backbone_features(batch["image_2p5x"]), batch["image_2p5x"].shape[-2:], return_full_assignment=False, return_tokens=True
+            )
+            edge_payload = build_online_cross_scale_edges(
+                assignment_low, middle_phase2["assignment_low"], coarse_phase2["assignment_low"],
+                batch["box_10x"], batch["box_5x"], batch["box_2p5x"], self.cross_scale_top_k,
+                self.cross_scale_edge_mode, self.cross_scale_shuffle_seed,
+            )
+            fine_tokens, middle_tokens, coarse_tokens = contextual_tokens, middle_phase2["region_tokens"], coarse_phase2["region_tokens"]
+            for block in self.cross_scale_blocks:
+                fine_tokens, middle_tokens, coarse_tokens = block.forward_bidir(
+                    fine_tokens, middle_tokens, coarse_tokens,
+                    edge_payload["fine_middle_edge_index"], edge_payload["fine_middle_edge_weight"],
+                    edge_payload["middle_coarse_edge_index"], edge_payload["middle_coarse_edge_weight"],
+                )
+            contextual_tokens = fine_tokens
         positive_tokens, positive_slots, positive_regions, positive_weights, positive_soft = remap_prompt_tokens(
             contextual_tokens, xy, batch["positive_xy"], batch["positive_mask"]
         )
@@ -359,7 +471,7 @@ class JointPromptMaskModel(nn.Module):
         output = {
             **decoded, **pixel,
             "assignment": phase2["assignment"], "assignment_low": assignment_low,
-            "online_region_tokens": phase2["region_tokens"], "online_fused_tokens": cell["fused_tokens"],
+            "online_region_tokens": phase2["region_tokens"], "online_fused_tokens": fused_tokens,
             "online_contextual_tokens": contextual_tokens,
             "online_region_xy": xy, "online_region_area": area,
             "online_binary_target": online_target, "online_region_purity": online_purity,
@@ -375,8 +487,24 @@ class JointPromptMaskModel(nn.Module):
             "online_negative_prompt_soft_weights": negative_soft,
             "teacher_logits": cached_teacher["logits"],
             "teacher_task_token": cached_teacher["task_token"],
-            "semantic_logits": phase2["semantic_logits"], "region_cell_count": cell["region_cell_count"],
+            "semantic_logits": phase2["semantic_logits"], "region_cell_count": region_cell_count,
         }
+        if edge_payload is not None:
+            output.update(edge_payload)
+            output["cross_scale_residual_norm"] = (contextual_tokens - fused_tokens).float().norm(dim=-1).mean()
+            output["fine_token_norm"] = fused_tokens.float().norm(dim=-1).mean()
+            if self.cross_scale_variant == "hierarchical_bidir_attention":
+                messages = [
+                    message
+                    for block in self.cross_scale_blocks
+                    for message in (block.down_cm, block.down_mf)
+                ]
+                output["cross_scale_attention_entropy"] = torch.stack(
+                    [message.last_attention_entropy.to(contextual_tokens.device) for message in messages]
+                ).mean()
+                output["cross_scale_attention_effective_parents"] = torch.stack(
+                    [message.last_effective_parents.to(contextual_tokens.device) for message in messages]
+                ).mean()
         if self.parent_context is not None:
             output["parent_context_gate"] = torch.tanh(self.parent_context.gate)
         if geometry_teacher is not None:

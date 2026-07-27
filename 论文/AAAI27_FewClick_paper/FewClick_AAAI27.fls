@@ -1,0 +1,11 @@
+PWD /home/zhaoyh/CellAtlas/论文/AAAI27_FewClick_paper
+INPUT /home/zhaoyh/TinyTeX/texmf.cnf
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/web2c/texmf.cnf
+INPUT /home/zhaoyh/TinyTeX/texmf-var/web2c/pdftex/pdflatex.fmt
+INPUT FewClick_AAAI27.tex
+OUTPUT FewClick_AAAI27.log
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/tex/latex/base/article.cls
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/tex/latex/base/article.cls
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/tex/latex/base/size10.clo
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/tex/latex/base/size10.clo
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/tex/latex/base/size10.clo

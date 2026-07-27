@@ -56,6 +56,7 @@ def parse_args():
     parser.add_argument("--eligibility-index", type=Path, required=True)
     parser.add_argument("--train-cell-routing", type=Path, required=True)
     parser.add_argument("--val-cell-routing", type=Path, required=True)
+    parser.add_argument("--slic-index", type=Path)
     parser.add_argument("--timestamp")
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--initial-joint-checkpoint", type=Path)
@@ -88,6 +89,7 @@ def source_hashes(config_path: Path) -> dict[str, str]:
         Path("benchmarks/v4/phase_6_mask_decoder/src/checkpoint_policy.py"),
         Path("benchmarks/v4/phase_4_cross_scale/src/model.py"),
         Path("benchmarks/v4/phase_2_region_encoder/src/model.py"),
+        Path("benchmarks/v4/phase_5_prompt_encoder/src/model.py"),
         Path(config_path),
     ]
     return {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
@@ -308,9 +310,20 @@ def main() -> None:
     torch.cuda.set_device(local_rank); device = torch.device("cuda", local_rank); seed_all(int(cfg["project"]["seed"]) + rank)
 
     train_episodes = make_episodes(cfg, args, "train"); val_episodes = make_episodes(cfg, args, "val")
-    parent_context = bool(cfg["model"].get("train_parent_context", False))
-    train_set = JointPixelEpisodeDataset(train_episodes, args.patch_index, args.train_cell_routing, p2cfg["data"]["class_map"], int(cfg["data"]["ignore_index"]), int(cfg["data"]["max_cells_per_patch"]), include_parent_context=parent_context)
-    val_full = JointPixelEpisodeDataset(val_episodes, args.patch_index, args.val_cell_routing, p2cfg["data"]["class_map"], int(cfg["data"]["ignore_index"]), int(cfg["data"]["max_cells_per_patch"]), include_parent_context=parent_context)
+    if bool(cfg["model"].get("train_parent_context", False)):
+        raise ValueError("ParentContextAdapter/J10 cache injection is retired; use cross_scale_variant")
+    cross_scale_variant = str(cfg["model"].get("cross_scale_variant", "fine_only"))
+    include_multiscale = cross_scale_variant != "fine_only"
+    use_cell_branch = bool(cfg["model"].get("use_cell_branch", True))
+    regionization_variant = str(cfg["model"].get("regionization_variant", "learned"))
+    prompt_set_variant = str(cfg["model"].get("prompt_set_variant", "set_encoder"))
+    if regionization_variant not in ("learned", "fixed_slic"):
+        raise ValueError(f"unsupported regionization_variant={regionization_variant}")
+    if regionization_variant == "fixed_slic" and args.slic_index is None:
+        raise ValueError("fixed_slic regionization requires --slic-index")
+    slic_args = {"slic_index": args.slic_index, "slic_num_regions": int(p2cfg["model"]["num_regions"])} if regionization_variant == "fixed_slic" else {}
+    train_set = JointPixelEpisodeDataset(train_episodes, args.patch_index, args.train_cell_routing, p2cfg["data"]["class_map"], int(cfg["data"]["ignore_index"]), int(cfg["data"]["max_cells_per_patch"]), include_multiscale=include_multiscale, **slic_args)
+    val_full = JointPixelEpisodeDataset(val_episodes, args.patch_index, args.val_cell_routing, p2cfg["data"]["class_map"], int(cfg["data"]["ignore_index"]), int(cfg["data"]["max_cells_per_patch"]), include_multiscale=include_multiscale, **slic_args)
     budget = args.samples_per_epoch or int(cfg["training"]["samples_per_epoch"])
     val_budget = args.validation_samples or int(cfg["training"]["validation_samples"])
     if args.overfit_episode_index is not None:
@@ -347,20 +360,26 @@ def main() -> None:
     )
     mc = cfg["model"]
     model = JointPromptMaskModel(
-        phase2, cell, prompt, int(mc["region_dim"]), int(mc["graph_heads"]), int(mc["graph_layers"]),
-        int(mc["graph_neighbours"]), float(mc["graph_dropout"]), float(mc["residual_limit"]),
-        bool(mc["train_phase2_embedding"]), bool(mc["train_phase2_assignment"]), bool(mc["train_cell"]), bool(mc["train_prompt"]),
-        bool(mc.get("train_decoder", True)), bool(mc.get("train_parent_context", False)),
-        bool(mc.get("train_backbone_layer4", False)),
-        len(p2cfg["data"]["class_map"]), int(cfg["data"]["ignore_index"]),
+        phase2, cell, prompt, region_dim=int(mc["region_dim"]), graph_heads=int(mc["graph_heads"]), graph_layers=int(mc["graph_layers"]),
+        graph_neighbours=int(mc["graph_neighbours"]), graph_dropout=float(mc["graph_dropout"]), residual_limit=float(mc["residual_limit"]),
+        train_phase2_embedding=bool(mc["train_phase2_embedding"]), train_phase2_assignment=bool(mc["train_phase2_assignment"]), train_cell=bool(mc["train_cell"]), train_prompt=bool(mc["train_prompt"]),
+        train_decoder=bool(mc.get("train_decoder", True)), train_backbone_layer4=bool(mc.get("train_backbone_layer4", False)),
+        cross_scale_variant=cross_scale_variant, cross_scale_blocks=int(mc.get("cross_scale_blocks", 1)), cross_scale_top_k=int(mc.get("cross_scale_top_k", 4)),
+        cross_scale_edge_mode=str(mc.get("cross_scale_edge_mode", "physical")), cross_scale_shuffle_seed=int(mc.get("cross_scale_shuffle_seed", cfg["project"]["seed"])),
+        use_cell_branch=use_cell_branch,
+        regionization_variant=regionization_variant,
+        prompt_set_variant=prompt_set_variant,
+        num_classes=len(p2cfg["data"]["class_map"]), ignore_index=int(cfg["data"]["ignore_index"]),
     ).to(device)
     initial_joint = None
     if args.initial_joint_checkpoint is not None:
         payload = torch.load(args.initial_joint_checkpoint, map_location=device, weights_only=False)
         missing, unexpected = model.load_state_dict(payload["model"], strict=False)
         allowed_missing = {
-            f"parent_context.{name}" for name in model.parent_context.state_dict()
-        } if model.parent_context is not None else set()
+            f"cross_scale_blocks.{index}.{name}"
+            for index, block in enumerate(model.cross_scale_blocks or [])
+            for name in block.state_dict()
+        }
         if unexpected or set(missing) - allowed_missing:
             raise ValueError(
                 f"incompatible initial joint checkpoint missing={missing} unexpected={unexpected}"
@@ -377,7 +396,7 @@ def main() -> None:
         "phase2_assignment": [p for p in model.phase2.assignment.parameters() if p.requires_grad],
         "cell": [p for p in model.cell.parameters() if p.requires_grad],
         "prompt": prompt_parameters,
-        "parent_context": [p for p in model.parent_context.parameters() if p.requires_grad] if model.parent_context is not None else [],
+        "cross_scale": [p for block in (model.cross_scale_blocks or []) for p in block.parameters() if p.requires_grad],
         "backbone_layer4": [p for p in model.phase2.backbone.layer4.parameters() if p.requires_grad] if bool(mc.get("train_backbone_layer4", False)) else [],
     }
     groups = {name: parameters for name, parameters in groups.items() if parameters}
@@ -389,7 +408,7 @@ def main() -> None:
             (bool(mc["train_cell"]), "cell"),
             (bool(mc["train_prompt"]), "prompt"),
             (bool(mc.get("train_decoder", True)), "decoder"),
-            (bool(mc.get("train_parent_context", False)), "parent_context"),
+            (cross_scale_variant in ("hierarchical_bidir", "hierarchical_bidir_attention"), "cross_scale"),
             (bool(mc.get("train_backbone_layer4", False)), "backbone_layer4"),
         ) if enabled
     )
@@ -398,7 +417,7 @@ def main() -> None:
         raise ValueError(f"required trainable groups missing: {sorted(missing_groups)}")
     if not required_groups:
         raise ValueError("joint training requires at least one enabled trainable group")
-    lr = {"decoder": "decoder_lr", "phase2_embedding": "phase2_embedding_lr", "phase2_assignment": "phase2_assignment_lr", "cell": "cell_lr", "prompt": "prompt_lr", "parent_context": "parent_context_lr", "backbone_layer4": "backbone_layer4_lr"}
+    lr = {"decoder": "decoder_lr", "phase2_embedding": "phase2_embedding_lr", "phase2_assignment": "phase2_assignment_lr", "cell": "cell_lr", "prompt": "prompt_lr", "cross_scale": "cross_scale_lr", "backbone_layer4": "backbone_layer4_lr"}
     optimizer = torch.optim.AdamW(
         [{"params": parameters, "lr": float(cfg["training"][lr[name]]), "name": name} for name, parameters in groups.items()],
         weight_decay=float(cfg["training"]["weight_decay"]),
@@ -447,8 +466,24 @@ def main() -> None:
             "samples_per_epoch": budget, "validation_samples": len(val_indices), "trainable_groups": {name: sum(p.numel() for p in parameters) for name, parameters in groups.items()},
             "required_gradient_groups": sorted(required_groups),
             "overfit_episode_index": args.overfit_episode_index,
-            "inputs": {name: str(getattr(args, name)) if getattr(args, name) is not None else None for name in ("phase2_config", "phase5_config", "phase2_checkpoint", "cell_checkpoint", "phase5_checkpoint", "cache_index", "label_index", "patch_index", "eligibility_index", "train_cell_routing", "val_cell_routing", "resume", "initial_joint_checkpoint", "geometry_teacher_checkpoint")},
+            "inputs": {name: str(getattr(args, name)) if getattr(args, name) is not None else None for name in ("phase2_config", "phase5_config", "phase2_checkpoint", "cell_checkpoint", "phase5_checkpoint", "cache_index", "label_index", "patch_index", "eligibility_index", "train_cell_routing", "val_cell_routing", "slic_index", "resume", "initial_joint_checkpoint", "geometry_teacher_checkpoint")},
             "transfers": transfer, "initial_joint": initial_joint,
+            "cross_scale": {
+                "variant": cross_scale_variant,
+                "blocks": int(mc.get("cross_scale_blocks", 0)) if include_multiscale else 0,
+                "top_k": int(mc.get("cross_scale_top_k", 0)) if include_multiscale else 0,
+                "online_encoding": include_multiscale,
+                "edge_builder": "physical_overlap_topk_v1",
+                "edge_mode": str(mc.get("cross_scale_edge_mode", "physical")),
+                "shuffle_seed": int(mc.get("cross_scale_shuffle_seed", cfg["project"]["seed"])),
+                "use_cell_branch": use_cell_branch,
+                "regionization_variant": regionization_variant,
+                "prompt_set_variant": prompt_set_variant,
+                "encoder_checkpoints": {
+                    "fine": str(args.phase2_checkpoint), "middle": str(args.phase2_checkpoint),
+                    "coarse": str(args.phase2_checkpoint),
+                },
+            },
             "geometry_teacher": geometry_teacher_transfer, "config": cfg,
             "prompt_teacher": {
                 "enabled": prompt_teacher is not None,
@@ -478,12 +513,15 @@ def main() -> None:
             train_sampler.set_epoch(epoch)
         train_set.set_epoch(0 if args.overfit_episode_index is not None else epoch)
         raw_model.train(); started = time.monotonic()
-        train_sums = {"loss": 0.0, **{name: 0.0 for name in ("pixel_bce", "pixel_dice_loss", "pixel_boundary_loss", "region_aux_loss", "region_valid_episodes", "region_positive_evaluable_episodes", "region_negative_evaluable_episodes", "region_ranking_evaluable_episodes", "assignment_balance", "assignment_entropy", "assignment_compactness", "prompt_separation_loss", "prompt_conflict_margin_loss", "prompt_conflict_margin_pairs", "prompt_geometry_anchor_loss", "prompt_geometry_anchor_episodes", "prompt_geometry_anchor_prompts", "prompt_sign_loss", "teacher_logit_loss", "teacher_task_loss", "teacher_stable_regions", "prompt_conflict_slots", "prompt_conflict_episodes", "prompt_episodes", "input_prompt_conflict_slots", "input_prompt_conflict_episodes", "input_prompt_episodes", "excluded_prompt_conflict_episodes", "fully_filtered_batches")}}
+        train_sums = {"loss": 0.0, **{name: 0.0 for name in ("pixel_bce", "pixel_dice_loss", "pixel_boundary_loss", "region_aux_loss", "region_valid_episodes", "region_positive_evaluable_episodes", "region_negative_evaluable_episodes", "region_ranking_evaluable_episodes", "assignment_balance", "assignment_entropy", "assignment_compactness", "prompt_separation_loss", "prompt_conflict_margin_loss", "prompt_conflict_margin_pairs", "prompt_geometry_anchor_loss", "prompt_geometry_anchor_episodes", "prompt_geometry_anchor_prompts", "prompt_sign_loss", "teacher_logit_loss", "teacher_task_loss", "teacher_stable_regions", "prompt_conflict_slots", "prompt_conflict_episodes", "prompt_episodes", "input_prompt_conflict_slots", "input_prompt_conflict_episodes", "input_prompt_episodes", "excluded_prompt_conflict_episodes", "fully_filtered_batches", "cross_scale_residual_norm", "fine_token_norm", "cross_scale_attention_entropy", "cross_scale_attention_effective_parents")}}
         train_steps = 0
         for batch in train_loader:
             batch = move_batch(batch, device); optimizer.zero_grad(set_to_none=True)
             with torch.autocast("cuda", dtype=amp_dtype):
                 output = model(batch, geometry_teacher=geometry_teacher, prompt_teacher=prompt_teacher)
+                for name in ("cross_scale_residual_norm", "fine_token_norm", "cross_scale_attention_entropy", "cross_scale_attention_effective_parents"):
+                    if name in output:
+                        train_sums[name] += float(output[name].detach())
                 raw_conflicts = output["online_prompt_conflicts"]
                 input_conflict_episodes = raw_conflicts.any(1)
                 train_sums["input_prompt_conflict_slots"] += float(raw_conflicts.sum())
@@ -570,8 +608,19 @@ def main() -> None:
                 "learning_rates": {group["name"]: group["lr"] for group in optimizer.param_groups},
                 "epoch_elapsed_sec": round(time.monotonic() - started, 2),
             }
-            if raw_model.parent_context is not None:
-                row["parent_context_gate"] = float(torch.tanh(raw_model.parent_context.gate.detach()))
+            if raw_model.cross_scale_blocks is not None:
+                row["cross_scale_variant"] = raw_model.cross_scale_variant
+                row["cross_scale_residual_to_fine_norm"] = (
+                    reduced["train_cross_scale_residual_norm"] /
+                    max(reduced["train_fine_token_norm"], 1e-12)
+                )
+                if raw_model.cross_scale_variant == "hierarchical_bidir_attention":
+                    row["cross_scale_attention_entropy"] = (
+                        reduced["train_cross_scale_attention_entropy"] / max(reduced["train_steps"], 1)
+                    )
+                    row["cross_scale_attention_effective_parents"] = (
+                        reduced["train_cross_scale_attention_effective_parents"] / max(reduced["train_steps"], 1)
+                    )
             train_prompt_episodes = reduced["train_prompt_episodes"]
             row.update({
                 "train_region_valid_episodes": int(reduced["train_region_valid_episodes"]),

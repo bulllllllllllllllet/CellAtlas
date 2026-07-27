@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Freeze prompt boxes from Phase-2 assignments without consulting GT."""
+"""Freeze prompt points/boxes from Phase-2 hard assignments without consulting GT."""
 from __future__ import annotations
 
 import argparse
@@ -15,6 +15,33 @@ from benchmarks.v4.phase_1_multiscale.src.data import read_he_patch
 from benchmarks.v4.phase_4_cross_scale.src.export_tokens import encode_scale, load_phase2
 from benchmarks.v4.phase_5_prompt_encoder.src.dataset import PromptEpisodeDataset
 from benchmarks.v4.baseline.common import append_jsonl, atomic_json, new_output_directory, sha256_path, timestamp
+
+
+def hard_region_representatives(assignment: np.ndarray, slots: np.ndarray) -> tuple[np.ndarray, list[str]]:
+    """Choose hard-member maxima, using the slot-probability maximum for empty slots."""
+    assignment = np.asarray(assignment)
+    slots = np.asarray(slots, dtype=np.int64)
+    if assignment.ndim != 3:
+        raise ValueError(f"assignment must be [slots,H,W], got {assignment.shape}")
+    if slots.ndim != 1 or not len(slots) or len(np.unique(slots)) != len(slots):
+        raise ValueError("slots must be a non-empty unique 1D array")
+    if slots.min() < 0 or slots.max() >= assignment.shape[0]:
+        raise ValueError(f"slot indices must be in [0,{assignment.shape[0]})")
+    hard = assignment.argmax(0)
+    points = []
+    modes = []
+    for slot in slots:
+        yy, xx = np.nonzero(hard == int(slot))
+        if not len(xx):
+            y, x = np.unravel_index(int(np.argmax(assignment[int(slot)])), hard.shape)
+            points.append([float(x) + 0.5, float(y) + 0.5])
+            modes.append("soft_max_probability_empty_hard_slot")
+            continue
+        probability = assignment[int(slot), yy, xx]
+        selected = int(np.argmax(probability))
+        points.append([float(xx[selected]) + 0.5, float(yy[selected]) + 0.5])
+        modes.append("hard_member_max_probability")
+    return np.asarray(points, dtype=np.float32), modes
 
 
 def parse_args() -> argparse.Namespace:
@@ -34,6 +61,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--seed", type=int, default=20260722)
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--episode-index", type=int, help="Export one explicit audited episode index for a representative run")
     parser.add_argument("--shard-size", type=int, default=32)
     parser.add_argument("--output-root", type=Path, default=Path("/nfs-medical3/zyh/v4/baseline"))
     parser.add_argument("--timestamp")
@@ -58,7 +86,13 @@ def main() -> None:
     )
     occurrence_rows = pd.read_parquet(args.occurrence_source).reset_index(drop=True)
     occurrences = occurrence_rows.drop_duplicates("episode_index", keep="first").reset_index(drop=True)
+    if args.episode_index is not None:
+        occurrences = occurrences[occurrences["episode_index"] == args.episode_index].reset_index(drop=True)
+        if len(occurrences) != 1:
+            raise ValueError(f"episode_index {args.episode_index} is not present exactly once after de-duplication")
     if args.limit is not None:
+        if args.episode_index is not None:
+            raise ValueError("--limit and --episode-index are mutually exclusive")
         occurrences = occurrences.iloc[: args.limit]
     patches = pd.read_parquet(args.patch_index)
     patches = patches[patches["split"] == args.split].set_index("patch_id")
@@ -84,18 +118,39 @@ def main() -> None:
             int(patch.width_level0), int(patch.height_level0), int(patch.width_10x),
         )
         encoded = encode_scale(model, image, device, torch.bfloat16)
-        hard = np.asarray(encoded["assignment"]).argmax(0)
-        slots = item["positive_slot_indices"][item["positive_mask"]].numpy().astype(np.int64)
-        selected = np.isin(hard, slots)
+        assignment = np.asarray(encoded["assignment"])
+        hard = assignment.argmax(0)
+        positive_slots = item["positive_slot_indices"][item["positive_mask"]].numpy().astype(np.int64)
+        negative_slots = item["negative_slot_indices"][item["negative_mask"]].numpy().astype(np.int64)
+        try:
+            positive_points, positive_point_modes = hard_region_representatives(assignment, positive_slots)
+            negative_points, negative_point_modes = hard_region_representatives(assignment, negative_slots)
+        except ValueError as exc:
+            append_jsonl(
+                failures,
+                {"episode_index": index, "patch_id": item["patch_id"], "error": str(exc)},
+            )
+            flush()
+            raise RuntimeError(f"representative-point failure for episode_index={index}") from exc
+        selected = np.isin(hard, positive_slots)
         if not selected.any():
-            append_jsonl(failures, {"episode_index": index, "patch_id": item["patch_id"], "error": "positive slots have no assigned pixels"})
-            flush(); raise RuntimeError(f"positive slots have no pixels for episode_index={index}")
-        yy, xx = np.nonzero(selected)
+            xx = np.floor(positive_points[:, 0]).astype(np.int64)
+            yy = np.floor(positive_points[:, 1]).astype(np.int64)
+            box_mode = "soft_point_envelope_all_positive_hard_slots_empty"
+        else:
+            yy, xx = np.nonzero(selected)
+            box_mode = "union_hard_assignment_positive_slots"
         box = [int(xx.min()), int(yy.min()), int(xx.max()) + 1, int(yy.max()) + 1]
         rows.append({
             "episode_index": index, "patch_id": str(item["patch_id"]),
+            "positive_points_10x": json.dumps(positive_points.tolist(), separators=(",", ":")),
+            "negative_points_10x": json.dumps(negative_points.tolist(), separators=(",", ":")),
+            "positive_point_modes": json.dumps(positive_point_modes, separators=(",", ":")),
+            "negative_point_modes": json.dumps(negative_point_modes, separators=(",", ":")),
+            "positive_box_mode": box_mode,
             "positive_box_10x": json.dumps(box, separators=(",", ":")),
-            "source_region_ids": json.dumps(slots.tolist(), separators=(",", ":")),
+            "source_region_ids": json.dumps(positive_slots.tolist(), separators=(",", ":")),
+            "negative_source_region_ids": json.dumps(negative_slots.tolist(), separators=(",", ":")),
             "assignment_checkpoint_sha256": sha256_path(args.phase2_checkpoint),
         })
         append_jsonl(completed, {"episode_index": index, "patch_id": item["patch_id"]})
@@ -113,7 +168,9 @@ def main() -> None:
         "gpus": args.gpus, "device": str(device), "seed": args.seed,
         "phase2_checkpoint": str(args.phase2_checkpoint), "phase2_checkpoint_sha256": sha256_path(args.phase2_checkpoint),
         "geometry": str(geometry_path), "geometry_sha256": sha256_path(geometry_path),
-        "rule": "union_bbox_of_frozen_positive_phase2_assignment_slots_no_gt",
+        "box_rule": "union_bbox_of_positive_hard_assignment_slots_or_soft_point_envelope_when_all_are_empty_no_gt",
+        "point_rule": "max_slot_probability_among_hard_assignment_member_pixel_centers_or_soft_max_for_empty_slots_no_gt",
+        "empty_hard_slot_fallback": "user_approved_soft_max_slot_probability_pixel_center",
     })
     print(json.dumps({"output": str(output), "geometry": str(geometry_path), "rows": len(frame)}, indent=2))
 

@@ -34,6 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--eligibility-index", type=Path, required=True)
     parser.add_argument("--split", choices=("val",), default="val")
     parser.add_argument("--episode-index", type=int, required=True)
+    parser.add_argument("--prompt-geometry", type=Path)
     parser.add_argument("--device", required=True)
     parser.add_argument("--output-root", type=Path, default=Path("/nfs-medical3/zyh/v4/baseline"))
     parser.add_argument("--timestamp")
@@ -94,8 +95,6 @@ def main() -> None:
         if not 0 <= args.episode_index < len(dataset):
             raise IndexError(f"episode-index {args.episode_index} outside [0,{len(dataset)})")
         item = dataset[args.episode_index]
-        if str(item["prompt_size"]) != "point":
-            raise ValueError("SAM dependency smoke requires a point episode; no box geometry may be synthesized")
         patches = pd.read_parquet(args.patch_index)
         matches = patches[patches["patch_id"].astype(str) == str(item["patch_id"])]
         if len(matches) != 1 or str(matches.iloc[0]["split"]) != args.split:
@@ -115,13 +114,19 @@ def main() -> None:
         size = np.asarray([patch.width_10x, patch.height_10x], dtype=np.float32)
         positive = item["positive_xy"][item["positive_mask"]].numpy() * size
         negative = item["negative_xy"][item["negative_mask"]].numpy() * size
+        box = None
+        if args.prompt_geometry is not None:
+            geometry = pd.read_parquet(args.prompt_geometry).set_index("episode_index").loc[args.episode_index]
+            positive = np.asarray(json.loads(geometry.positive_points_10x), np.float32)
+            negative = np.asarray(json.loads(geometry.negative_points_10x), np.float32)
+            box = np.asarray(json.loads(geometry.positive_box_10x), np.float32)
         adapter = build_adapter(config)
         request = EpisodeRequest(
             occurrence_id=f"{args.split}_dependency_smoke_{args.episode_index}",
             image=np.asarray(image, dtype=np.uint8),
             positive_points=positive.astype(np.float32),
             negative_points=negative.astype(np.float32),
-            prompt_type="point",
+            prompt_type=str(item["prompt_size"]), positive_box=box,
             multiscale_inputs={
                 "fine": np.asarray(image, dtype=np.uint8),
                 "wsi_path": str(patch.wsi_path),

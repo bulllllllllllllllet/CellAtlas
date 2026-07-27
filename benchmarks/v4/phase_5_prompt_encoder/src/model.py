@@ -35,6 +35,7 @@ class PromptRegionModel(nn.Module):
     def __init__(self, dim: int = 256, heads: int = 4, set_layers: int = 2, dropout: float = 0.1):
         super().__init__()
         self.dim = int(dim)
+        self.prompt_pool_variant = "set_encoder"
         self.region_norm = nn.LayerNorm(dim)
         self.prompt_token_norm = nn.LayerNorm(dim)
         self.prompt_geometry = nn.Sequential(nn.Linear(2, dim), nn.GELU(), nn.Linear(dim, dim))
@@ -68,7 +69,14 @@ class PromptRegionModel(nn.Module):
         embedded = self.prompt_token_norm(tokens) + self.prompt_geometry(xy)
         embedded = embedded + self.sign_embedding.weight[sign_id] + self.size_embedding(size_id)[:, None]
         embedded = embedded * valid.unsqueeze(-1).to(embedded.dtype)
-        return self.set_pool(embedded, valid)
+        if self.prompt_pool_variant == "set_encoder":
+            return self.set_pool(embedded, valid)
+        if self.prompt_pool_variant == "mean_prototype":
+            if not valid.any(1).all():
+                raise ValueError("each prompt set must contain at least one valid token")
+            count = valid.sum(1, keepdim=True).clamp_min(1).to(embedded.dtype)
+            return embedded.sum(1) / count
+        raise ValueError(f"unsupported prompt_pool_variant={self.prompt_pool_variant}")
 
     def encode_prompt_task(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """Encode positive/negative prompt sets independently of candidate regions."""
