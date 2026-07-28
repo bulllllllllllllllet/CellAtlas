@@ -31,13 +31,6 @@ Tissue segmentation in whole-slide images (WSIs) underpins tissue quantification
 \section{Introduction}
 Whole-slide images (WSIs) record complete tissue morphology at extremely high resolution and are central to computational pathology and computer-assisted clinical analysis. Accurate WSI tissue segmentation supports measurements of tumor area and tissue proportions, tumor-microenvironment analysis, spatial biomarker studies, region-of-interest selection, and downstream diagnostic or prognostic modeling. Yet a single WSI may contain billions of pixels, complex boundaries, and substantial scale variation. Pixel-wise delineation by pathologists is therefore costly and difficult to scale. Obtaining accurate and adaptable tissue maps with limited human effort remains an important problem.
 
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=\textwidth]{images/main_picture.pdf}
-\caption{Overview of FewClick. Multiscale learnable regions integrate cellular evidence and hierarchical context; positive and negative prompts define the tissue decoded across the WSI.}
-\label{fig:overview}
-\end{figure*}
-
 Most existing approaches formulate tissue segmentation as multiclass prediction over a fixed label set, such as tumor, stroma, necrosis, and adipose tissue. This formulation works when class definitions are stable and dense annotations are available, but the output space is restricted to classes seen during training. A new tissue structure, a region with a particular cellular composition, or a target defined for a specific study generally requires new pixel-level labels and model retraining. Because tissue definitions also vary across cancer types, cohorts, and clinical questions, fixed-class models are difficult to use as extensible tissue-analysis tools.
 
 Promptable models such as the Segment Anything Model (SAM) offer a different route: users specify a target with sparse points, boxes, or scribbles, and the model returns a mask without retraining a class-specific head. Direct application to WSIs nevertheless faces three difficulties. First, tissue identity is not always distinguishable from color, texture, or a local boundary; it can depend on cell types, density, and spatial composition. Second, a user may prompt only one local occurrence of a tissue that appears at several disconnected locations. A model driven by nearby appearance may fail to propagate the intended tissue semantics across the slide. Third, pathology spans cell morphology, local architecture, and global layout, so a single scale rarely provides both precise boundaries and reliable tissue identity.
@@ -67,6 +60,12 @@ Cell type, morphology, density, and spatial distribution characterize the tissue
 Cell--tissue relationships also support hierarchical reasoning. OCELOT pairs overlapping cell and tissue annotations and shows that tissue context improves cell detection \cite{ryu2023ocelot}. Ceograph represents cell types, morphology, and spatial relations as a graph for clinical outcome prediction \cite{wang2023ceograph}. At larger scales, HIPT hierarchically aggregates cellular morphology, tissue microenvironment, and slide-level information for gigapixel WSIs \cite{chen2022hipt}. These methods target cell detection or slide-level prediction rather than retaining region-level outputs for interactive tissue segmentation. FewClick unifies cell evidence, multiscale context, and prompt conditioning at the region level.
 
 \section{Method}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{images/main_picture.pdf}
+\caption{Overview of FewClick. Multiscale learnable regions integrate cellular evidence and hierarchical context; positive and negative prompts define the tissue decoded across the WSI.}
+\label{fig:overview}
+\end{figure*}
 \subsection{Prompt-Defined Tissue Segmentation}
 Let $I$ denote an H\&E-stained WSI and $\Omega$ its pixel domain at a reference resolution. For one interaction, a user supplies positive and negative prompt sets $\mathcal{P}^{+}$ and $\mathcal{P}^{-}$. A prompt may be a point, box, scribble, or local region. Positive prompts describe the desired tissue; negative prompts exclude visually similar but semantically distinct regions. Unlike fixed-class segmentation, a prompt defines the current concept through local visual and pathological evidence. FewClick learns
 \begin{equation}
@@ -201,6 +200,45 @@ The first two terms optimize pixel-level output, and $\mathcal{L}_{\mathrm{bd}}$
 For a WSI, FewClick precomputes multiscale visual features, cell embeddings, learned regions, and the sparse hierarchy. When the user supplies prompts, it maps them to regions, constructs the task token, decodes all fine regions, and projects probabilities to a binary mask. Additional prompts update only prompt representations and region decoding; slide-level image and cell features need not be recomputed. Because all candidate regions are decoded rather than grown from the clicked component, the model can retrieve distant and disconnected tissue with similar cellular and contextual evidence.
 
 \section{Experiments}
+% Do not allow later experiment floats to jump above this section heading on
+% the partially filled preceding page.
+\suppressfloats[t]\suppressfloats[b]
+% Keep the two principal quantitative tables at the top of the experiments
+% page. The qualitative results remain separate, numbered figures.
+\begin{table*}[!t]
+\centering
+\begin{minipage}[t]{0.485\textwidth}
+\vspace{0pt}
+\centering
+\includegraphics[width=\linewidth]{images/table_patch_comparison.pdf}
+\refstepcounter{table}\label{tab:patch-comparison}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.485\textwidth}
+\vspace{0pt}
+\centering
+\includegraphics[width=\linewidth]{images/table_wsi_comparison.pdf}
+\refstepcounter{table}\label{tab:wsi-comparison}
+\end{minipage}
+
+\end{table*}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{images/choosed/1p_3p_5p_horizontal_large_labels.png}
+\caption{Patch-level qualitative examples under the $(1{+}1)$, $(3{+}1)$, and $(5{+}1)$ prompt budgets. In each group, (b) is the ground-truth (GT) mask, (c) is our prediction, and (d--f) are the predictions of three different SAM-based methods. Green and red markers denote positive and negative prompts, respectively.}
+\label{fig:patch-qualitative}
+\end{figure*}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{images/choosed/WSI_3panel_horizontal_matched_labels.png}
+\caption{Whole-slide qualitative examples of prompt-defined tissue masks across three representative WSIs. In each group, (b) is the ground-truth (GT) mask, (c) is our prediction, and (d--f) are the predictions of three different SAM-based methods. Our method uses a single set of positive and negative prompts, whereas the SAM-based methods use prompts optimized to better match their annotation paradigm. Green and red markers denote positive and negative prompts, respectively.}
+\label{fig:wsi-qualitative}
+\end{figure*}
+
+% Defer this one-column table until the preceding double-column float has
+% shipped out; the opposite column can then be filled by the running text.
+
 \subsection{Experimental Setup}
 \paragraph{Data splits and episodic evaluation.}
 We use a development cohort of 200 H\&E WSIs, split at the slide level into 140 training, 30 validation, and 30 held-out test slides. The test set remains sealed during model development. Ablations are conducted on a fixed validation manifest of 4,000 episodes; each training epoch contains 20,000 episodes. An episode specifies a WSI region, a target tissue, its binary mask, positive prompts, and optional hard negative prompts. Unless stated otherwise, all variants share the data split, prompt manifest, random seed, augmentation, and optimization schedule. Components downstream of an ablated representation are retrained to avoid distribution mismatch with the full-model decoder.
@@ -212,30 +250,21 @@ We compare FewClick with SAM, SAM-Med2D, and WSI-SAM using their public pretrain
 \paragraph{Patch-level results.}
 We evaluate three interaction budgets, denoted $(1{+}1)$, $(3{+}1)$, and $(5{+}1)$ for one, three, or five positive points plus one negative point. FewClick leads every baseline under every budget and metric. With only $(1{+}1)$ prompts, it reaches 0.7522 global Dice and 0.7418 macro Dice, exceeding the strongest external baseline, SAM, by 0.2662 and 0.2769, respectively. Performance increases further with additional positive points, reaching 0.8425 global Dice under the $(5{+}1)$ budget.
 
-\begin{table*}[!t]
-\centering
-\includegraphics[width=\textwidth]{images/table_patch_comparison.pdf}
-\refstepcounter{table}\label{tab:patch-comparison}
-\end{table*}
 
-Table~\ref{tab:patch-comparison} summarizes the matched-episode results. Because eligibility differs across budgets, we separately control for sample composition on their common subset: 885 occurrences from 819 unique patches, with identical masks, classes, and negative points. All four methods improve as the positive-point budget grows. FewClick rises from 0.7915 global Dice with one positive point to 0.8291 with three and 0.8425 with five. Thus, its advantage is not an artifact of changing episode composition, and additional positive evidence yields consistent gains on the controlled cohort (Figure~\ref{fig:prompt-budget}).
+Table~\ref{tab:patch-comparison} summarizes the matched-episode results. Because eligibility differs across budgets, we separately control for sample composition on their common subset: 885 occurrences from 819 unique patches, with identical masks, classes, and negative points. All four methods improve as the positive-point budget grows. FewClick rises from 0.7915 global Dice with one positive point to 0.8291 with three and 0.8425 with five. Thus, its advantage is not an artifact of changing episode composition, and additional positive evidence yields consistent gains on the controlled cohort (Figures~\ref{fig:patch-qualitative} and \ref{fig:prompt-budget}).
+
+
+
+\paragraph{Whole-slide results.}
+We next evaluate 12 tissue classes present in each of 10 WSIs. For FewClick, five $(1{+}1)$ prompt candidates are generated per WSI--class pair, and the candidate with the highest ground-truth Dice is retained (600 successful whole-slide inferences). The patchwise baselines are applied only to ground-truth-positive patches and then stitched, requiring 23,642 local calls per method. Both protocols therefore use oracle information---candidate selection for FewClick and positive-patch selection for the baselines. We report this experiment as attainable whole-slide performance under each inference paradigm; the matched patch-level evaluation remains the controlled comparison.
+
+FewClick obtains 0.7495 macro Dice, surpassing WSI-SAM, the strongest baseline on this metric, by 0.3153. It also improves macro mIoU and micro Dice by 0.3138 and 0.1819, respectively (Table~\ref{tab:wsi-comparison}). SAM attains high recall but low precision, indicating extensive false positives, whereas FewClick maintains balanced precision and recall. FewClick ranks first for all 12 tissues, with particularly large gains on normal gland, normal stroma, and lymphocyte aggregates, where cellular composition and contextual organization are informative (Figure~\ref{fig:wsi-qualitative} and Table~\ref{tab:wsi-per-class}). Necrosis and blood remain the most challenging classes.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{images/figure_prompt_budget_curve.pdf}
 \refstepcounter{figure}\label{fig:prompt-budget}
 \end{figure}
-
-\paragraph{Whole-slide results.}
-We next evaluate 12 tissue classes present in each of 10 WSIs. For FewClick, five $(1{+}1)$ prompt candidates are generated per WSI--class pair, and the candidate with the highest ground-truth Dice is retained (600 successful whole-slide inferences). The patchwise baselines are applied only to ground-truth-positive patches and then stitched, requiring 23,642 local calls per method. Both protocols therefore use oracle information---candidate selection for FewClick and positive-patch selection for the baselines. We report this experiment as attainable whole-slide performance under each inference paradigm; the matched patch-level evaluation remains the controlled comparison.
-
-FewClick obtains 0.7495 macro Dice, surpassing WSI-SAM, the strongest baseline on this metric, by 0.3153. It also improves macro mIoU and micro Dice by 0.3138 and 0.1819, respectively (Table~\ref{tab:wsi-comparison}). SAM attains high recall but low precision, indicating extensive false positives, whereas FewClick maintains balanced precision and recall. FewClick ranks first for all 12 tissues, with particularly large gains on normal gland, normal stroma, and lymphocyte aggregates, where cellular composition and contextual organization are informative (Table~\ref{tab:wsi-per-class}). Necrosis and blood remain the most challenging classes.
-
-\begin{table}[!t]
-\centering
-\includegraphics[width=\columnwidth]{images/table_wsi_comparison.pdf}
-\refstepcounter{table}\label{tab:wsi-comparison}
-\end{table}
 
 \begin{table}[!t]
 \centering
@@ -250,6 +279,8 @@ We isolate four completed architectural ablations under the fixed 4,000-episode 
 \centering
 \includegraphics[width=\columnwidth]{images/table_ablation.pdf}
 \refstepcounter{table}\label{tab:ablations}
+% Locally tighten the gap before the following running text.
+\vspace*{-6pt}
 \end{table}
 
 \paragraph{Learnable regions.}

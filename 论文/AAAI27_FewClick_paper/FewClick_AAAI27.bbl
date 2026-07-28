@@ -4,76 +4,76 @@
 \bibitem[{Chan et~al.(2019)Chan, Hosseini, Rowsell, Plataniotis, and Damaskinos}]{chan2019histosegnet}
 Chan, L.; Hosseini, M.~S.; Rowsell, C.; Plataniotis, K.~N.; and Damaskinos, S. 2019.
 \newblock HistoSegNet: Semantic Segmentation of Histological Tissue Type in Whole Slide Images.
-\newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision}, 10662--10671.
+\newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 10662--10671.
 
 \bibitem[{Chen et~al.(2022)Chen, Chen, Li, Chen, Trister, Krishnan, and Mahmood}]{chen2022hipt}
 Chen, R.~J.; Chen, C.; Li, Y.; Chen, T.~Y.; Trister, A.~D.; Krishnan, R.~G.; and Mahmood, F. 2022.
 \newblock Scaling Vision Transformers to Gigapixel Images via Hierarchical Self-Supervised Learning.
-\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, 16144--16155.
+\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 16144--16155.
 
-\bibitem[{Cheng et~al.(2023)Cheng, Ye, Deng et~al.}]{cheng2023sammed2d}
-Cheng, J.; Ye, J.; Deng, Z.; et~al. 2023.
+\bibitem[{Cheng et~al.(2023)Cheng, Ye, Deng, Chen, Li, Wang, Su, Huang, Chen, Jiang, Sun, He, Zhang, Zhu, and Qiao}]{cheng2023sammed2d}
+Cheng, J.; Ye, J.; Deng, Z.; Chen, J.; Li, T.; Wang, H.; Su, Y.; Huang, Z.; Chen, J.; Jiang, L.; Sun, H.; He, J.; Zhang, S.; Zhu, M.; and Qiao, Y. 2023.
 \newblock {SAM-Med2D}.
-\newblock \emph{arXiv preprint arXiv:2308.16184}.
+\newblock arXiv:2308.16184.
 
-\bibitem[{Deng et~al.(2025)Deng, Cui, Liu et~al.}]{deng2023sam_pathology}
-Deng, R.; Cui, C.; Liu, Q.; et~al. 2025.
+\bibitem[{Deng et~al.(2025)Deng, Cui, Liu, Yao, Remedios, Bao, Landman, Wheless, Coburn, Wilson, Wang, Zhao, Fogo, Yang, Tang, and Huo}]{deng2023sam_pathology}
+Deng, R.; Cui, C.; Liu, Q.; Yao, T.; Remedios, L.~W.; Bao, S.; Landman, B.~A.; Wheless, L.~E.; Coburn, L.~A.; Wilson, K.~T.; Wang, Y.; Zhao, S.; Fogo, A.~B.; Yang, H.; Tang, Y.; and Huo, Y. 2025.
 \newblock Segment Anything Model ({SAM}) for Digital Pathology: Assess Zero-Shot Segmentation on Whole Slide Imaging.
-\newblock \emph{IS\&T International Symposium on Electronic Imaging Science and Technology}, 37(14).
+\newblock In \emph{IS\&T International Symposium on Electronic Imaging}, volume~37, COIMG--132.
 
-\bibitem[{Graham et~al.(2019)Graham, Vu, Raza et~al.}]{graham2019hovernet}
-Graham, S.; Vu, Q.~D.; Raza, S. E.~A.; et~al. 2019.
+\bibitem[{Graham et~al.(2019)Graham, Vu, Raza, Azam, Tsang, Kwak, and Rajpoot}]{graham2019hovernet}
+Graham, S.; Vu, Q.~D.; Raza, S.-e.-A.; Azam, A.; Tsang, Y.-W.; Kwak, J.~T.; and Rajpoot, N.~M. 2019.
 \newblock {HoVer-Net}: Simultaneous Segmentation and Classification of Nuclei in Multi-Tissue Histology Images.
 \newblock \emph{Medical Image Analysis}, 58: 101563.
 
-\bibitem[{Ho et~al.(2021)Ho, Yarlagadda, D'Alfonso et~al.}]{ho2021dmmn}
-Ho, D.~J.; Yarlagadda, D. V.~K.; D'Alfonso, T.~M.; et~al. 2021.
+\bibitem[{Ho et~al.(2021)Ho, Yarlagadda, D'Alfonso, Hanna, Grabenstetter, Ntiamoah, Brogi, Tan, and Fuchs}]{ho2021dmmn}
+Ho, D.~J.; Yarlagadda, D. V.~K.; D'Alfonso, T.~M.; Hanna, M.~G.; Grabenstetter, A.; Ntiamoah, P.; Brogi, E.; Tan, L.~K.; and Fuchs, T.~J. 2021.
 \newblock Deep Multi-Magnification Networks for Multi-Class Breast Cancer Image Segmentation.
 \newblock \emph{Computerized Medical Imaging and Graphics}, 88: 101866.
 
-\bibitem[{H{\"o}rst et~al.(2024)H{\"o}rst, Rempe, Heine et~al.}]{horst2024cellvit}
-H{\"o}rst, F.; Rempe, M.; Heine, L.; et~al. 2024.
+\bibitem[{H{\"o}rst et~al.(2024)H{\"o}rst, Rempe, Heine, Seibold, Keyl, Baldini, Ugurel, Siveke, Gr{\"u}nwald, Egger, and Kleesiek}]{horst2024cellvit}
+H{\"o}rst, F.; Rempe, M.; Heine, L.; Seibold, C.; Keyl, J.; Baldini, G.; Ugurel, S.; Siveke, J.; Gr{\"u}nwald, B.; Egger, J.; and Kleesiek, J. 2024.
 \newblock {CellViT}: Vision Transformers for Precise Cell Segmentation and Classification.
 \newblock \emph{Medical Image Analysis}, 94: 103143.
 
-\bibitem[{Kirillov et~al.(2023)Kirillov, Mintun, Ravi et~al.}]{kirillov2023sam}
-Kirillov, A.; Mintun, E.; Ravi, N.; et~al. 2023.
+\bibitem[{Kirillov et~al.(2023)Kirillov, Mintun, Ravi, Mao, Rolland, Gustafson, Xiao, Whitehead, Berg, Lo, Doll{\'a}r, and Girshick}]{kirillov2023sam}
+Kirillov, A.; Mintun, E.; Ravi, N.; Mao, H.; Rolland, C.; Gustafson, L.; Xiao, T.; Whitehead, S.; Berg, A.~C.; Lo, W.-Y.; Doll{\'a}r, P.; and Girshick, R. 2023.
 \newblock Segment Anything.
-\newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision}, 4015--4026.
+\newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 4015--4026.
 
 \bibitem[{Liu et~al.(2024)Liu, Yang, van Diest, Pluim, and Veta}]{liu2024wsisam}
 Liu, H.; Yang, H.; van Diest, P.~J.; Pluim, J. P.~W.; and Veta, M. 2024.
 \newblock {WSI-SAM}: Multi-Resolution Segment Anything Model ({SAM}) for Histopathology Whole-Slide Images.
-\newblock In \emph{Proceedings of the MICCAI Workshop on Computational Pathology}, volume 254 of \emph{Proceedings of Machine Learning Research}, 25--37.
+\newblock In \emph{Proceedings of the MICCAI Workshop on Computational Pathology}, volume 254 of \emph{Proceedings of Machine Learning Research}, 25--37. PMLR.
 
 \bibitem[{Ma et~al.(2024)Ma, He, Li, Han, You, and Wang}]{ma2024medsam}
 Ma, J.; He, Y.; Li, F.; Han, L.; You, C.; and Wang, B. 2024.
 \newblock Segment Anything in Medical Images.
 \newblock \emph{Nature Communications}, 15: 654.
 
-\bibitem[{Ryu et~al.(2023)Ryu, Puche, Shin et~al.}]{ryu2023ocelot}
-Ryu, J.; Puche, A.~V.; Shin, J.; et~al. 2023.
+\bibitem[{Ryu et~al.(2023)Ryu, Puche, Shin, Park, Brattoli, Lee, Jung, Cho, Paeng, Ock, Yoo, and Pereira}]{ryu2023ocelot}
+Ryu, J.; Puche, A.~V.; Shin, J.; Park, S.; Brattoli, B.; Lee, J.; Jung, W.; Cho, S.~I.; Paeng, K.; Ock, C.-Y.; Yoo, D.; and Pereira, S. 2023.
 \newblock {OCELOT}: Overlapped Cell on Tissue Dataset for Histopathology.
-\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, 23902--23912.
+\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 23902--23912.
 
 \bibitem[{Tokunaga et~al.(2019)Tokunaga, Teramoto, Yoshizawa, and Bise}]{tokunaga2019awmf}
 Tokunaga, H.; Teramoto, Y.; Yoshizawa, A.; and Bise, R. 2019.
-\newblock Adaptive Weighting Multi-Field-of-View {CNN} for Semantic Segmentation in Pathology.
-\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}, 12597--12606.
+\newblock Adaptive Weighting Multi-Field-Of-View {CNN} for Semantic Segmentation in Pathology.
+\newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 12597--12606.
 
 \bibitem[{van Rijthoven et~al.(2021)van Rijthoven, Balkenhol, Sili{\c{n}}a, van~der Laak, and Ciompi}]{vanrijthoven2021hooknet}
 van Rijthoven, M.; Balkenhol, M.; Sili{\c{n}}a, K.; van~der Laak, J.; and Ciompi, F. 2021.
 \newblock {HookNet}: Multi-Resolution Convolutional Neural Networks for Semantic Segmentation in Histopathology Whole-Slide Images.
 \newblock \emph{Medical Image Analysis}, 68: 101890.
 
-\bibitem[{Wang et~al.(2023)Wang, Rong, Zhou et~al.}]{wang2023ceograph}
-Wang, S.; Rong, R.; Zhou, Q.; et~al. 2023.
+\bibitem[{Wang et~al.(2023)Wang, Rong, Zhou, Yang, Zhang, Zhan, Bishop, Chi, Wilhelm, Zhang, Pickering, Kris, Minna, Xie, and Xiao}]{wang2023ceograph}
+Wang, S.; Rong, R.; Zhou, Q.; Yang, D.~M.; Zhang, X.; Zhan, X.; Bishop, J.; Chi, Z.; Wilhelm, C.~J.; Zhang, S.; Pickering, C.~R.; Kris, M.~G.; Minna, J.; Xie, Y.; and Xiao, G. 2023.
 \newblock Deep Learning of Cell Spatial Organizations Identifies Clinically Relevant Insights in Tissue Images.
 \newblock \emph{Nature Communications}, 14: 7872.
 
-\bibitem[{Xu et~al.(2019)Xu, Song, Sun et~al.}]{xu2019camel}
-Xu, G.; Song, Z.; Sun, Z.; et~al. 2019.
+\bibitem[{Xu et~al.(2019)Xu, Song, Sun, Ku, Yang, Liu, Wang, Ma, and Xu}]{xu2019camel}
+Xu, G.; Song, Z.; Sun, Z.; Ku, C.; Yang, Z.; Liu, C.; Wang, S.; Ma, J.; and Xu, W. 2019.
 \newblock {CAMEL}: A Weakly Supervised Learning Framework for Histopathology Image Segmentation.
-\newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision}, 10682--10691.
+\newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 10682--10691.
 
 \end{thebibliography}

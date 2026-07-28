@@ -14,6 +14,7 @@
 \definecolor{wsigreen}{RGB}{0,158,115}
 \definecolor{fewred}{RGB}{213,94,0}
 \captionsetup{font=small,labelfont=bf}
+\captionsetup[table]{font=normalsize,labelfont=bf}
 
 % ============================================================================
 % EDIT AREA A -- CURVE VALUES
@@ -62,44 +63,45 @@
    \colorbox{white}{\color{#1}\scriptsize #2}}}
 % A four-row group has its visual center about 18pt below the first-row
 % baseline. Use an explicit length because tabular resets \baselineskip.
-\newcommand{\groupcell}[1]{\smash{\raisebox{-18pt}{#1}}}
+\newcommand{\groupcell}[1]{\smash{\raisebox{-12pt}{#1}}}
 
 \begin{document}
 
 \begin{center}
-\begin{minipage}{178mm}
+\begin{minipage}{89mm}
 \captionsetup{width=\linewidth}
 \centering
-\footnotesize
-\setlength{\tabcolsep}{7pt}
-\renewcommand{\arraystretch}{1.12}
-\begin{tabular}{lcc cccc}
+\normalsize
+\setlength{\tabcolsep}{1.8pt}
+\renewcommand{\arraystretch}{1.02}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc@{}}
 \toprule
-Method & Prompts & Episodes & Global Dice & Macro Dice & mIoU & Boundary F1 \\
+Method & Prompts & Global & Macro & mIoU & Boundary \\
+       &         & Dice & Dice & & F1 \\
 \midrule
-SAM       & \groupcell{$(1{+}1)$} & \groupcell{4,000} & 0.4860 & 0.4649 & 0.3094 & 0.1369 \\
-SAM-Med2D &             &                       & 0.4219 & 0.4318 & 0.2979 & 0.1454 \\
-WSI-SAM   &             &                       & 0.4154 & 0.4064 & 0.2653 & 0.1353 \\
-\textbf{FewClick} &     &                       & \textbf{0.7522} & \textbf{0.7418} & \textbf{0.5938} & \textbf{0.2971} \\
+SAM       & \groupcell{$(1{+}1)$} & 0.4860 & 0.4649 & 0.3094 & 0.1369 \\
+SAM-Med2D &                         & 0.4219 & 0.4318 & 0.2979 & 0.1454 \\
+WSI-SAM   &                         & 0.4154 & 0.4064 & 0.2653 & 0.1353 \\
+\textbf{FewClick} &                 & \textbf{0.7522} & \textbf{0.7418} & \textbf{0.5938} & \textbf{0.2971} \\
 \midrule
-SAM       & \groupcell{$(3{+}1)$} & \groupcell{1,261} & 0.5903 & 0.5805 & 0.4143 & 0.1763 \\
-SAM-Med2D &             &                       & 0.5178 & 0.5323 & 0.5089 & 0.1680 \\
-WSI-SAM   &             &                       & 0.5623 & 0.5608 & 0.3976 & 0.1676 \\
-\textbf{FewClick} &     &                       & \textbf{0.8164} & \textbf{0.8159} & \textbf{0.6913} & \textbf{0.3324} \\
+SAM       & \groupcell{$(3{+}1)$} & 0.5903 & 0.5805 & 0.4143 & 0.1763 \\
+SAM-Med2D &                         & 0.5178 & 0.5323 & 0.5089 & 0.1680 \\
+WSI-SAM   &                         & 0.5623 & 0.5608 & 0.3976 & 0.1676 \\
+\textbf{FewClick} &                 & \textbf{0.8164} & \textbf{0.8159} & \textbf{0.6913} & \textbf{0.3324} \\
 \midrule
-SAM       & \groupcell{$(5{+}1)$} & \groupcell{885} & 0.6290 & 0.6243 & 0.4585 & 0.1956 \\
-SAM-Med2D &             &                     & 0.6050 & 0.6149 & 0.4706 & 0.1791 \\
-WSI-SAM   &             &                     & 0.6041 & 0.6057 & 0.4397 & 0.1764 \\
-\textbf{FewClick} &     &                     & \textbf{0.8425} & \textbf{0.8406} & \textbf{0.7178} & \textbf{0.3229} \\
+SAM       & \groupcell{$(5{+}1)$} & 0.6290 & 0.6243 & 0.4585 & 0.1956 \\
+SAM-Med2D &                         & 0.6050 & 0.6149 & 0.4706 & 0.1791 \\
+WSI-SAM   &                         & 0.6041 & 0.6057 & 0.4397 & 0.1764 \\
+\textbf{FewClick} &                 & \textbf{0.8425} & \textbf{0.8406} & \textbf{0.7178} & \textbf{0.3229} \\
 \bottomrule
-\end{tabular}
+\end{tabular*}
 \captionof{table}{Patch-level segmentation under matched episodes and prompt coordinates. Best results within each prompt budget are in bold.}
 \end{minipage}
 \end{center}
 
 \clearpage
 \begin{center}
-\begin{minipage}{84mm}
+\begin{minipage}{89mm}
 \captionsetup{width=\linewidth}
 \setcounter{figure}{1}
 \centering
@@ -170,60 +172,60 @@ WSI-SAM   &             &                     & 0.6041 & 0.6057 & 0.4397 & 0.176
 
 \clearpage
 \begin{center}
-\begin{minipage}{84mm}
+\begin{minipage}{89mm}
 \captionsetup{width=\linewidth}
-\centering\footnotesize
+\centering\normalsize
 \setlength{\tabcolsep}{2.6pt}\renewcommand{\arraystretch}{1.12}
-\begin{tabular}{lccccc}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc@{}}
 \toprule
 Method & Macro & Macro & Macro & Macro & Micro \\
        & Dice & mIoU & Prec. & Recall & Dice \\
 \midrule
-SAM       & 0.4082 & 0.3158 & 0.3474 & 0.6821 & 0.7000 \\
-SAM-Med2D & 0.3901 & 0.3095 & 0.4580 & 0.4966 & 0.6651 \\
-WSI-SAM   & 0.4342 & 0.3245 & 0.4892 & 0.4146 & 0.7418 \\
+SAM       & 0.3352 & 0.2344 & 0.2372 & 0.9628 & 0.5424 \\
+SAM-Med2D & 0.3478 & 0.2276 & 0.2987 & 0.7152 & 0.4555 \\
+WSI-SAM   & 0.4001 & 0.2871 & 0.2925 & 0.9533 & 0.6257 \\
 \textbf{FewClick} & \textbf{0.7495} & \textbf{0.6383} & \textbf{0.7456} & \textbf{0.7676} & \textbf{0.9237} \\
 \bottomrule
-\end{tabular}
-\captionof{table}{Oracle-assisted whole-slide results on 10 WSIs and 12 tissues. The differing protocols are described in the text; values indicate attainable rather than strictly matched performance.}
+\end{tabular*}
+\captionof{table}{Oracle-assisted whole-slide results on five WSIs and 12 tissues. FewClick reports the best of five GT-selected candidates per WSI--tissue pair; each SAM baseline uses the revised context-aware, GT-guided patchwise protocol. These attainable-protocol results complement the matched patch-level comparison.}
 \end{minipage}
 \end{center}
 
 \clearpage
 \begin{center}
-\begin{minipage}{84mm}
+\begin{minipage}{89mm}
 \captionsetup{width=\linewidth}
-\centering\footnotesize
+\centering\normalsize
 \setlength{\tabcolsep}{2.2pt}\renewcommand{\arraystretch}{1.12}
-\begin{tabular}{@{}lcccc@{}}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc@{}}
 \toprule
 Tissue & FewClick & SAM & SAM-Med. & WSI-SAM \\
 \midrule
-Tumor epi. & \textbf{0.8859} & 0.5752 & 0.5356 & 0.4923 \\
-Tumor stroma & \textbf{0.8443} & 0.5551 & 0.4702 & 0.4164 \\
-Background & \textbf{0.9776} & 0.9030 & 0.8472 & 0.8524 \\
-Necrosis & \textbf{0.5590} & 0.2080 & 0.2590 & 0.2401 \\
-Normal gland & \textbf{0.6963} & 0.2243 & 0.3121 & 0.2394 \\
-Normal stroma & \textbf{0.6430} & 0.2749 & 0.2756 & 0.2463 \\
-Submucosa/serosa & \textbf{0.8500} & 0.5113 & 0.6762 & 0.5124 \\
-Muscle & \textbf{0.8611} & 0.6028 & 0.5521 & 0.4966 \\
-Lymph. aggregate & \textbf{0.7937} & 0.2795 & 0.3401 & 0.4003 \\
-Mucus & \textbf{0.6590} & 0.2204 & 0.3343 & 0.3072 \\
-Adipose & \textbf{0.6820} & 0.2894 & 0.3711 & 0.3979 \\
-Blood & \textbf{0.5419} & 0.1550 & 0.2078 & 0.2487 \\
+Tumor epi. & \textbf{0.8859} & 0.5695 & 0.5468 & 0.6186 \\
+Tumor stroma & \textbf{0.8443} & 0.4067 & 0.4733 & 0.4976 \\
+Background & \textbf{0.9776} & 0.8263 & 0.4573 & 0.8481 \\
+Necrosis & \textbf{0.5590} & 0.0735 & 0.1484 & 0.1089 \\
+Normal gland & \textbf{0.6963} & 0.3060 & 0.3531 & 0.3652 \\
+Normal stroma & \textbf{0.6430} & 0.2082 & 0.2722 & 0.2719 \\
+Submucosa/serosa & \textbf{0.8500} & 0.4423 & 0.5080 & 0.5493 \\
+Muscle & \textbf{0.8611} & 0.5106 & 0.5643 & 0.6001 \\
+Lymph. aggregate & \textbf{0.7937} & 0.2064 & 0.3625 & 0.3231 \\
+Mucus & \textbf{0.6590} & 0.1066 & 0.1526 & 0.1522 \\
+Adipose & \textbf{0.6820} & 0.3374 & 0.2746 & 0.4139 \\
+Blood & \textbf{0.5419} & 0.0292 & 0.0604 & 0.0529 \\
 \bottomrule
-\end{tabular}
-\captionof{table}{Per-class whole-slide Dice. Best results are in bold.}
+\end{tabular*}
+\captionof{table}{Per-class whole-slide Dice under the oracle-assisted protocols described in the text. Best results are in bold.}
 \end{minipage}
 \end{center}
 
 \clearpage
 \begin{center}
-\begin{minipage}{84mm}
+\begin{minipage}{89mm}
 \captionsetup{width=\linewidth}
-\centering\footnotesize
+\centering\normalsize
 \setlength{\tabcolsep}{3pt}\renewcommand{\arraystretch}{1.12}
-\begin{tabular}{lcccc}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc@{}}
 \toprule
 Variant & Macro & Micro & Boundary & $\Delta$ \\
         & Dice  & Dice  & F1       & Macro \\
@@ -234,7 +236,7 @@ No cell fusion & 0.5885 & 0.6543 & 0.2471 & $-0.1528$ \\
 Fixed SLIC regions & 0.5650 & 0.6482 & 0.1475 & $-0.1763$ \\
 Mean prompt prototypes & 0.7215 & 0.7970 & 0.3062 & $-0.0199$ \\
 \bottomrule
-\end{tabular}
+\end{tabular*}
 \captionof{table}{Component ablations on 4,000 fixed validation episodes. $\Delta$ is the macro-Dice change from FewClick.}
 \end{minipage}
 \end{center}

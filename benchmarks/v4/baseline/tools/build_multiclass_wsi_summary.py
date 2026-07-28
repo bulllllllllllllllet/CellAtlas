@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -31,6 +31,20 @@ NEW_CLASSES = [
     "normal_gland",
     "normal_stroma",
     "submucosa_serosa",
+    "lymphocyte_aggregate",
+    "mucus",
+    "fat",
+    "blood",
+]
+FULL_CLASS_ORDER = [
+    "tumor_epithelium",
+    "tumor_stroma",
+    "background",
+    "necrosis",
+    "normal_gland",
+    "normal_stroma",
+    "submucosa_serosa",
+    "muscle",
     "lymphocyte_aggregate",
     "mucus",
     "fat",
@@ -66,6 +80,21 @@ def parse_args() -> argparse.Namespace:
         "--report",
         type=Path,
         default=REPO / "benchmarks/v4/baseline/doc/2.md",
+    )
+    parser.add_argument(
+        "--sam-shared-start-timestamp",
+        help=(
+            "first timestamp of the 12-class shared-context SAM sweep; subsequent "
+            "class runs must be one-minute increments in configured class-ID order"
+        ),
+    )
+    parser.add_argument(
+        "--j5-cache-root",
+        type=Path,
+        help=(
+            "reuse validated J5 per-WSI and candidate metric Parquets from a prior "
+            "summary, avoiding a second full-resolution TIFF metric pass"
+        ),
     )
     return parser.parse_args()
 
@@ -135,6 +164,39 @@ def candidate_metrics(
         metric_fields(gt_count, int(pred_counts[index]), int(intersections[index]))
         for index in range(len(masks))
     ]
+
+
+def collect_shared_sam_rows(class_ids: dict[str, int], start_timestamp: str) -> list[dict]:
+    try:
+        start = datetime.strptime(start_timestamp, "%Y%m%d_%H%M%S")
+    except ValueError as exc:
+        raise ValueError("sam-shared-start-timestamp must use YYYYMMDD_HHMMSS") from exc
+    rows: list[dict] = []
+    for class_index, class_name in enumerate(FULL_CLASS_ORDER):
+        stamp = (start + timedelta(minutes=class_index)).strftime("%Y%m%d_%H%M%S")
+        for method in ("sam", "sam_med2d", "wsi_sam"):
+            root = BASELINE / f"{method}_gt_guided_wsi_{stamp}"
+            for wsi_id in WSIS:
+                path = root / wsi_id / "metadata.json"
+                data = json.loads(path.read_text(encoding="utf-8"))
+                expected = {
+                    "method": method,
+                    "wsi_id": wsi_id,
+                    "target_class": class_ids[class_name],
+                    "target_class_name": class_name,
+                    "context_scale": 2,
+                    "context_prompt_mode": "all_in_context",
+                    "complete_protocol": True,
+                }
+                for key, value in expected.items():
+                    if data.get(key) != value:
+                        raise RuntimeError(f"shared SAM contract mismatch {path}: {key}")
+                if int(data["positive_clicks"]) != int(data["target_patches"]):
+                    raise RuntimeError(f"shared SAM positive-click contract mismatch: {path}")
+                rows.append({**data, "source_metadata": str(path)})
+    if len(rows) != 3 * 12 * 5:
+        raise RuntimeError(f"expected 180 shared SAM rows, got {len(rows)}")
+    return rows
 
 
 def collect_sam_rows(class_ids: dict[str, int]) -> list[dict]:
@@ -403,6 +465,7 @@ def markdown_report(
     overall: pd.DataFrame,
     candidates: pd.DataFrame,
     artifact_root: Path,
+    shared_prompt_protocol: bool,
 ) -> str:
     lines = [
         "# 五张 WSI、十二类组织的全图分割对比汇总",
@@ -411,7 +474,7 @@ def markdown_report(
         f"- 样本：{len(WSIS)} 张固定 WSI。",
         "- 类别：12 类；所有类别在 5 张 WSI 中均存在，因此没有缺失类别，也没有把缺失类别强行记为 Dice=0。",
         "- J5：每个 WSI–类别生成 5 组“1 正点 + 1 负点”，报告其中 GT Dice 最高者；这是多候选 oracle 上界，不是单次随机点击结果。",
-        "- SAM / SAM-Med2D / WSI-SAM：只处理含目标组织的 patch；正点由 GT 目标区域随机采样，负点在非目标区域采样；无目标 patch 不点击、不调用模型。",
+        "- SAM / SAM-Med2D / WSI-SAM：只处理含目标组织的 patch；正点由冻结 GT 目标区域采样，负点由冻结非目标区域采样；无目标 patch 不点击、不调用模型。",
         "- 主指标为类别宏平均（先在每类的 5 张 WSI 上平均，再对类别平均）；同时保存像素微平均。",
         "",
         "## 主要结果",
@@ -448,7 +511,15 @@ def markdown_report(
         "",
         "## 标注与调用成本",
         "",
-        "- 三个 SAM 的 12 类实验各自只在 GT 含目标的 patch 上调用；表中的调用次数就是模拟人工交互的 patch 次数。每次最多使用 1 个正点和 1 个负点，若 patch 内没有可用负区域则不强行放置负点。",
+        (
+            "- 三个 SAM 的 12 类实验各自只在 GT 含目标的 patch 上调用；表中的正/负点为唯一的冻结模拟用户点击数。"
+            if shared_prompt_protocol else
+            "- 三个 SAM 的 12 类实验各自只在 GT 含目标的 patch 上调用；表中的调用次数就是模拟人工交互的 patch 次数。每次最多使用 1 个正点和 1 个负点，若 patch 内没有可用负区域则不强行放置负点。"
+        ),
+        *(
+            ["- 修正版 SAM 协议：每次在 1024×1024 context 上推理、中心 512×512 回填；同一张 WSI 的冻结全局点击会投影到所有可见 context。因此模型接收的提示实例可多于唯一点击数，二者分别在逐 WSI 指标中记录为 `positive/negative_prompt_instances` 与 `positive/negative_clicks`。"]
+            if shared_prompt_protocol else []
+        ),
         "- J5 每个 WSI–类别尝试 5 组候选，共 60 个 WSI–类别组合，即 300 组候选、300 个正点、300 个负点；最终只保留每组中 Dice 最高的一个结果。",
         f"- J5 候选中成功返回 mask {int((candidates.candidate_status == 'complete').sum())}/"
         f"{len(candidates)}；其余候选因提示落入同一 hard region 而 abstain，不补抽候选。",
@@ -475,7 +546,7 @@ def markdown_report(
         "",
         "## 解释与公平性边界",
         "",
-        "1. J5 是一次全图传播：每个候选只给一对全局提示，由模型输出整张 WSI。三个 SAM 是逐 patch 交互后拼接，无法用单个局部提示直接完成同等的全图同类组织检索。",
+        "1. J5 是一次全图传播：每个候选只给一对全局提示，由模型输出整张 WSI。三个 SAM 是 GT-guided patchwise 分割后拼接，不能解释成只需一次人工点击的全图检索能力。",
         "2. SAM 的提示点直接由 GT 生成，属于模拟用户点击；J5 的候选点也由 GT 候选规则产生，并进一步用 GT 选择最优候选。因此这些数值衡量的是给定提示策略下的能力，不是无监督性能。",
         "3. 当前全图协议统一提供 Dice、IoU、Precision 和 Recall。boundary F1、exclude-prompt-region Dice、disconnected-region recall 以及 1/3/5-point 曲线尚未在这批 WSI 产物上计算，不能由现有统计表可靠反推。",
         "4. 背景类面积很大，会显著影响像素微平均；主结论应优先引用“全部12类”的类别宏指标，并同时报告“不含背景的前景11类”。",
@@ -495,9 +566,31 @@ def markdown_report(
 def main() -> None:
     args = parse_args()
     class_ids, class_rgb = load_class_contract()
-    sam_rows = collect_sam_rows(class_ids)
-    j5_new, candidates_new = collect_j5_new_rows(class_ids, class_rgb)
-    j5_muscle, candidates_muscle = collect_j5_muscle_rows(class_ids)
+    shared_prompt_protocol = args.sam_shared_start_timestamp is not None
+    sam_rows = (
+        collect_shared_sam_rows(class_ids, args.sam_shared_start_timestamp)
+        if shared_prompt_protocol else collect_sam_rows(class_ids)
+    )
+    if args.j5_cache_root is None:
+        j5_new, candidates_new = collect_j5_new_rows(class_ids, class_rgb)
+        j5_muscle, candidates_muscle = collect_j5_muscle_rows(class_ids)
+    else:
+        cached_per_wsi = pd.read_parquet(args.j5_cache_root / "per_wsi_class_metrics.parquet")
+        cached_candidates = pd.read_parquet(args.j5_cache_root / "j5_candidate_metrics.parquet")
+        cached_j5 = cached_per_wsi.loc[cached_per_wsi.method == "j5_oracle5"].to_dict("records")
+        j5_new = [row for row in cached_j5 if row["target_class_name"] != "muscle"]
+        j5_muscle = [row for row in cached_j5 if row["target_class_name"] == "muscle"]
+        candidates_new = cached_candidates.loc[
+            cached_candidates.target_class_name != "muscle"
+        ].to_dict("records")
+        candidates_muscle = cached_candidates.loc[
+            cached_candidates.target_class_name == "muscle"
+        ].to_dict("records")
+        if len(cached_j5) != 60 or len(candidates_new) + len(candidates_muscle) != 300:
+            raise RuntimeError(
+                f"invalid J5 cache {args.j5_cache_root}: "
+                f"per_wsi={len(cached_j5)} candidates={len(candidates_new) + len(candidates_muscle)}"
+            )
     per_wsi = pd.DataFrame(sam_rows + j5_new + j5_muscle)
     candidates = pd.DataFrame(candidates_new + candidates_muscle)
     expected_keys = {
@@ -537,7 +630,9 @@ def main() -> None:
     (root / "audit.json").write_text(
         json.dumps(audit, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
-    report = markdown_report(per_wsi, per_class, overall, candidates, root)
+    report = markdown_report(
+        per_wsi, per_class, overall, candidates, root, shared_prompt_protocol,
+    )
     args.report.write_text(report, encoding="utf-8")
     (root / "summary_zh.md").write_text(report, encoding="utf-8")
     print(json.dumps({

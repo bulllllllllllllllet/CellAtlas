@@ -98,6 +98,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-root", type=Path, default=Path("/nfs-medical3/zyh/v4/phase6/evaluation"))
     parser.add_argument("--timestamp")
     parser.add_argument("--skip-panels", action="store_true")
+    parser.add_argument(
+        "--save-all-predictions",
+        action="store_true",
+        help="Retain prediction arrays for every selected episode, not only chosen panels.",
+    )
     return parser.parse_args()
 
 
@@ -712,6 +717,7 @@ def main() -> None:
             "joint_prompt_conflict_episode_rate": int(audit_counts[10]) / max(len(selected), 1),
             "joint_stress_set_path": str(output / "stress_set.parquet"),
             "panels_skipped": bool(args.skip_panels),
+            "save_all_predictions": bool(args.save_all_predictions),
             "pixel_thresholds": list(thresholds),
             "elapsed_seconds": time.monotonic() - t0, "baseline_load": baseline_load, "joint_load": joint_load,
             "inputs": {key: str(getattr(args, key)) for key in (
@@ -722,6 +728,24 @@ def main() -> None:
             "reproducibility": {"command": [sys.executable, *sys.argv], "source_sha256": source_hashes()},
         })
         panel_records = []
+        if args.save_all_predictions:
+            for episode_index in sorted(frame["episode_index"].astype(int).unique()):
+                item = full[episode_index]
+                item["episode_index"] = torch.tensor(episode_index)
+                batch = move_batch(collate([item]), device)
+                with torch.no_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
+                    joint_output = joint(batch)
+                np.savez_compressed(
+                    output / f"prediction_arrays_{episode_index:06d}.npz",
+                    probability=joint_output["pixel_probability"][0].float().cpu().numpy(),
+                    binary_mask=(joint_output["pixel_probability"][0] >= 0.5).cpu().numpy(),
+                    target_mask=(batch["pixel_gt"][0] == batch["target_class"][0]).cpu().numpy(),
+                    image=denormalize_image(batch["image"][0]),
+                    positive_points=batch["positive_xy"][0][batch["positive_mask"][0]].cpu().numpy()
+                    * [batch["image"].shape[-1], batch["image"].shape[-2]],
+                    negative_points=batch["negative_xy"][0][batch["negative_mask"][0]].cpu().numpy()
+                    * [batch["image"].shape[-1], batch["image"].shape[-2]],
+                )
         if not args.skip_panels:
             representatives, hard = choose_panels(frame)
             class_names = [item.get("name", f"class_{index}") for index, item in enumerate(p2cfg["data"]["class_map"])]

@@ -42,6 +42,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=20260722)
     parser.add_argument("--shard-size", type=int, default=32)
     parser.add_argument("--limit", type=int)
+    parser.add_argument(
+        "--save-predictions",
+        action="store_true",
+        help="retain image, prompts, GT, probability, and binary mask for each selected occurrence",
+    )
     parser.add_argument("--output-dir", type=Path, help="Existing shared timestamp directory for rank>0")
     return parser.parse_args()
 
@@ -92,6 +97,9 @@ def main() -> None:
     failures_path = output / f"failures_{stamp}.jsonl"
     completed_path.open("a", encoding="utf-8").close()
     failures_path.open("a", encoding="utf-8").close()
+    predictions = output / f"predictions_{stamp}"
+    if args.save_predictions:
+        predictions.mkdir(exist_ok=True)
     rank_metadata = output / f"run_metadata_rank{args.rank:02d}_{stamp}.json"
     command_path = output / f"command_rank{args.rank:02d}_{stamp}.txt"
     command_path.write_text(" ".join(sys.argv) + "\n", encoding="utf-8")
@@ -103,6 +111,7 @@ def main() -> None:
         "test_used": args.split == "test", "rank": args.rank, "world_size": args.world_size,
         "gpus": args.gpus, "num_workers": args.num_workers, "batch_size": args.batch_size,
         "seed": args.seed, "shard_size": args.shard_size, "selected_rows": len(selected),
+        "save_predictions": bool(args.save_predictions),
         "manifest": str(args.episode_manifest), "manifest_sha256": sha256_path(args.episode_manifest),
         "config": str(args.config), "config_sha256": sha256_path(args.config),
         "manifest_audit": audit, "failure_metric_policy": "empty_mask",
@@ -172,6 +181,8 @@ def main() -> None:
                     "fine_box_level0": [int(record[name]) for name in ("x_level0", "y_level0", "width_level0", "height_level0")],
                 } if bool(config.get("requires_multiscale_inputs", False)) else None,
             )
+            truth = gt == int(record["target_class"])
+            valid = gt != ignore
             try:
                 prediction = adapter.timed_predict(request)
                 status = prediction.status
@@ -182,18 +193,34 @@ def main() -> None:
                     append_jsonl(failures_path, {"occurrence_id": occurrence_id, "status": status})
                 else:
                     append_jsonl(completed_path, {"occurrence_id": occurrence_id, "status": status})
+                prediction_path = None
+                if args.save_predictions:
+                    prediction_path = predictions / f"{occurrence_id}.npz"
+                    if prediction_path.exists():
+                        raise FileExistsError(prediction_path)
+                    np.savez_compressed(
+                        prediction_path,
+                        image=np.asarray(image, dtype=np.uint8),
+                        probability=prediction.probability.astype(np.float32),
+                        binary_mask=mask.astype(bool),
+                        target_mask=truth.astype(bool),
+                        valid_mask=valid.astype(bool),
+                        positive_points=request.positive_points.astype(np.float32),
+                        negative_points=request.negative_points.astype(np.float32),
+                    )
             except Exception as exc:
                 status = "failed"; mask = np.zeros(gt.shape, dtype=bool); candidate_info = {}
                 latency = (time.perf_counter() - started) * 1000.0; peak = 0.0
+                prediction_path = None
                 append_jsonl(failures_path, {
                     "occurrence_id": occurrence_id, "status": status, "stage": "predict",
                     "error": repr(exc), "traceback": traceback.format_exc(),
                 })
-            truth = gt == int(record["target_class"]); valid = gt != ignore
             metric = binary_metric_row(mask, truth, valid, tolerance)
             rows.append(base | metric | {
                 "status": status, "latency_ms": float(latency), "peak_memory_mb": float(peak),
                 "candidate_info": json.dumps(candidate_info, separators=(",", ":"), default=str),
+                "prediction_npz": str(prediction_path) if prediction_path is not None else None,
             })
         except Exception as exc:
             append_jsonl(failures_path, {

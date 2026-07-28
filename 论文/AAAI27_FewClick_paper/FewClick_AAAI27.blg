@@ -5,42 +5,42 @@ The style file: aaai2027.bst
 Database file #1: FewClick_AAAI27.bib
 You've used 15 entries,
             2840 wiz_defined-function locations,
-            663 strings with 7408 characters,
-and the built_in function-call counts, 11919 in all, are:
-= -- 962
-> -- 670
-< -- 1
-+ -- 249
-- -- 235
-* -- 831
-:= -- 1937
-add.period$ -- 60
+            666 strings with 8980 characters,
+and the built_in function-call counts, 16071 in all, are:
+= -- 1136
+> -- 1239
+< -- 2
++ -- 459
+- -- 445
+* -- 1310
+:= -- 2561
+add.period$ -- 61
 call.type$ -- 15
-change.case$ -- 142
+change.case$ -- 214
 chr.to.int$ -- 16
 cite$ -- 15
-duplicate$ -- 787
-empty$ -- 770
-format.name$ -- 279
-if$ -- 2364
+duplicate$ -- 948
+empty$ -- 866
+format.name$ -- 489
+if$ -- 3083
 int.to.chr$ -- 1
 int.to.str$ -- 1
-missing$ -- 172
+missing$ -- 245
 newline$ -- 79
 num.names$ -- 60
-pop$ -- 339
+pop$ -- 518
 preamble$ -- 1
-purify$ -- 128
+purify$ -- 198
 quote$ -- 0
-skip$ -- 399
+skip$ -- 487
 stack$ -- 0
-substring$ -- 562
-swap$ -- 423
-text.length$ -- 1
+substring$ -- 600
+swap$ -- 596
+text.length$ -- 2
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 135
 warning$ -- 0
-while$ -- 87
+while$ -- 89
 width$ -- 0
-write$ -- 198
+write$ -- 200
