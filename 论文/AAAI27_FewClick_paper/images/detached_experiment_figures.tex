@@ -103,7 +103,7 @@ WSI-SAM   &                         & 0.6041 & 0.6057 & 0.4397 & 0.1764 \\
 \begin{center}
 \begin{minipage}{89mm}
 \captionsetup{width=\linewidth}
-\setcounter{figure}{1}
+\setcounter{figure}{3}
 \centering
 \setlength{\unitlength}{1mm}
 \footnotesize
@@ -187,7 +187,7 @@ WSI-SAM   & 0.4001 & 0.2871 & 0.2925 & 0.9533 & 0.6257 \\
 \textbf{FewClick} & \textbf{0.7495} & \textbf{0.6383} & \textbf{0.7456} & \textbf{0.7676} & \textbf{0.9237} \\
 \bottomrule
 \end{tabular*}
-\captionof{table}{Oracle-assisted whole-slide results on five WSIs and 12 tissues. FewClick reports the best of five GT-selected candidates per WSI--tissue pair; each SAM baseline uses the revised context-aware, GT-guided patchwise protocol. These attainable-protocol results complement the matched patch-level comparison.}
+\captionof{table}{Oracle-assisted whole-slide results on five WSIs and 12 tissues (60 WSI--tissue pairs and 300 FewClick candidate inferences). FewClick reports the best of five GT-selected candidates per pair; each SAM baseline uses the revised context-aware, GT-guided patchwise protocol. These attainable-protocol results complement the matched patch-level comparison.}
 \end{minipage}
 \end{center}
 
@@ -234,7 +234,7 @@ FewClick & \textbf{0.7413} & \textbf{0.8138} & \textbf{0.3142} & -- \\
 Fine scale only & 0.6384 & 0.6929 & 0.2630 & $-0.1029$ \\
 No cell fusion & 0.5885 & 0.6543 & 0.2471 & $-0.1528$ \\
 Fixed SLIC regions & 0.5650 & 0.6482 & 0.1475 & $-0.1763$ \\
-Mean prompt prototypes & 0.7215 & 0.7970 & 0.3062 & $-0.0199$ \\
+Mean prompt prototypes & 0.7215 & 0.7970 & 0.3062 & $-0.0198$ \\
 \bottomrule
 \end{tabular*}
 \captionof{table}{Component ablations on 4,000 fixed validation episodes. $\Delta$ is the macro-Dice change from FewClick.}

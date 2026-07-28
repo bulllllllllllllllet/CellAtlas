@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex FewClick_AAAI27"] 1785233723.11648 "FewClick_AAAI27.aux" "FewClick_AAAI27.bbl" "FewClick_AAAI27" 1785233723.51083 0
-  "./FewClick_AAAI27.bib" 1785160869.03184 7275 cc259f82d364d00fe14d0d5d48cb5187 ""
+["bibtex FewClick_AAAI27"] 1785255053.74791 "FewClick_AAAI27.aux" "FewClick_AAAI27.bbl" "FewClick_AAAI27" 1785255054.44834 0
+  "./FewClick_AAAI27.bib" 1785255042.24494 13863 11083ff7e815881c735798aa80c9ed3c ""
   "./aaai2027.bst" 1785145980.6412 30207 bd248dfe461b9b2fc7481a44feafe197 ""
-  "FewClick_AAAI27.aux" 1785233723.42242 3134 290122918ba9279e1150532ba6ea64ae "pdflatex"
+  "FewClick_AAAI27.aux" 1785255054.2931 6117 4d9b9715bbe6bc20cedf61e8163bbc6c "pdflatex"
   (generated)
   "FewClick_AAAI27.bbl"
   "FewClick_AAAI27.blg"
   (rewritten before read)
-["pdflatex"] 1785233723.13634 "FewClick_AAAI27.tex" "FewClick_AAAI27.pdf" "FewClick_AAAI27" 1785233723.51118 0
+["pdflatex"] 1785255053.80117 "FewClick_AAAI27.tex" "FewClick_AAAI27.pdf" "FewClick_AAAI27" 1785255054.4487 0
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc" 1698694482 2914 fdbc4a54b9bc76f4551b5303f2737d33 ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/jknappen/ec/ecrm1000.tfm" 1136768653 3584 adb004a0c8e7c46ee66cad73671f37b4 ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
@@ -29,6 +29,7 @@
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb" 1248133631 32762 224316ccc9ad3ca0423a14971cfa7fc1 ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb" 1248133631 32726 0a1aea6fcd6468ee2cf64d891f5c43c8 ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb" 1248133631 32569 5e5ddc8df908dea60932f3c484a54c0d ""
+  "/home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy5.pfb" 1248133631 32915 7bf7720c61a5b3a7ff25b0964421c9b6 ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb" 1248133631 32716 08e384dc442464e7285e891af9f45947 ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/latxfont/lcircle1.pfb" 1248133631 10594 310261a6407d360eda1ed257d05cd4df ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb" 1248133631 34694 ad62b13721ee8eda1dcc8993c8bd7041 ""
@@ -92,18 +93,18 @@
   "/home/zhaoyh/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1783525617 168480 9e4355181067b1d0d26e5bf9e0af1eb7 ""
   "/home/zhaoyh/TinyTeX/texmf-var/web2c/pdftex/pdflatex.fmt" 1783524185 2250948 7f9d598b318039e0cc09009c9e1166ea ""
   "/home/zhaoyh/TinyTeX/texmf.cnf" 1783523989.51087 637 edd806fb06a89761a6034e1968af9017 ""
-  "FewClick_AAAI27.aux" 1785233723.42242 3134 290122918ba9279e1150532ba6ea64ae "pdflatex"
-  "FewClick_AAAI27.bbl" 1785233723.1304 6290 a592a6d01f0b2374d52949b979b8412f "bibtex FewClick_AAAI27"
-  "FewClick_AAAI27.tex" 1785233159.13113 35952 c7546ec2610c3221e7767d1e73f73cd8 ""
+  "FewClick_AAAI27.aux" 1785255054.2931 6117 4d9b9715bbe6bc20cedf61e8163bbc6c "pdflatex"
+  "FewClick_AAAI27.bbl" 1785255053.76109 12102 075c89d6db1328c2b69ea6e3245f0cd7 "bibtex FewClick_AAAI27"
+  "FewClick_AAAI27.tex" 1785254979.78011 33318 50ffe11dbe74590981c4d3f47ba85e9a ""
   "aaai2027.sty" 1785145980.6372 16915 1b1c792e2acfbbd8b672259e267b95d8 ""
   "images/choosed/1p_3p_5p_horizontal_large_labels.png" 1785231937.01071 751599 82a61956f97f229cf28a5e15a722a31b ""
   "images/choosed/WSI_3panel_horizontal_matched_labels.png" 1785232063.88128 602219 e3240cd772d537e391d67fce61212787 ""
-  "images/figure_prompt_budget_curve.pdf" 1785233696.43729 23078 7884e81c89e6668fd238a4c4eefe5c35 ""
-  "images/main_picture.pdf" 1785139281.08653 1906692 1a328f6729fc38f28e296d960c3cd038 ""
-  "images/table_ablation.pdf" 1785233696.98131 17024 989e0fc428abe621d647251d1d132471 ""
-  "images/table_patch_comparison.pdf" 1785233696.22128 14480 cc4a34191b12adf197e32c002f1b5434 ""
-  "images/table_wsi_comparison.pdf" 1785233696.61729 14435 220856623197e50c567fe8200ebebf4e ""
-  "images/table_wsi_per_class.pdf" 1785233696.7973 13183 c63f26192bfd73f9613ced82ee1d3dfa ""
+  "images/figure_prompt_budget_curve.pdf" 1785248449.19631 23042 36846e2a4676af57729a5e06e7361283 ""
+  "images/main_picture.pdf" 1785253079.52545 30572094 61a77d0b5226ec780987b3356a25787e ""
+  "images/table_ablation.pdf" 1785248449.74032 17023 5ee44bb997e0bd74fbc6f7c5e2cea755 ""
+  "images/table_patch_comparison.pdf" 1785248448.97631 14480 57d1fb775d98c21959ed80ac829549ef ""
+  "images/table_wsi_comparison.pdf" 1785248449.37631 14657 12341cc71f5b71c414f7c539b884745f ""
+  "images/table_wsi_per_class.pdf" 1785248449.55632 13183 69fe9f965b89de0c121656581b617406 ""
   (generated)
   "FewClick_AAAI27.aux"
   "FewClick_AAAI27.log"

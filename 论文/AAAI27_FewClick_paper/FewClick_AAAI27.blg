@@ -3,44 +3,44 @@ Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: FewClick_AAAI27.aux
 The style file: aaai2027.bst
 Database file #1: FewClick_AAAI27.bib
-You've used 15 entries,
+You've used 29 entries,
             2840 wiz_defined-function locations,
-            666 strings with 8980 characters,
-and the built_in function-call counts, 16071 in all, are:
-= -- 1136
-> -- 1239
-< -- 2
-+ -- 459
-- -- 445
-* -- 1310
-:= -- 2561
-add.period$ -- 61
-call.type$ -- 15
-change.case$ -- 214
-chr.to.int$ -- 16
-cite$ -- 15
-duplicate$ -- 948
-empty$ -- 866
-format.name$ -- 489
-if$ -- 3083
+            743 strings with 13173 characters,
+and the built_in function-call counts, 30531 in all, are:
+= -- 2166
+> -- 2338
+< -- 4
++ -- 867
+- -- 837
+* -- 2507
+:= -- 4868
+add.period$ -- 118
+call.type$ -- 29
+change.case$ -- 403
+chr.to.int$ -- 30
+cite$ -- 29
+duplicate$ -- 1800
+empty$ -- 1657
+format.name$ -- 923
+if$ -- 5836
 int.to.chr$ -- 1
 int.to.str$ -- 1
-missing$ -- 245
-newline$ -- 79
-num.names$ -- 60
-pop$ -- 518
+missing$ -- 470
+newline$ -- 149
+num.names$ -- 116
+pop$ -- 979
 preamble$ -- 1
-purify$ -- 198
+purify$ -- 375
 quote$ -- 0
-skip$ -- 487
+skip$ -- 895
 stack$ -- 0
-substring$ -- 600
-swap$ -- 596
-text.length$ -- 2
+substring$ -- 1173
+swap$ -- 1133
+text.length$ -- 4
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 135
+type$ -- 261
 warning$ -- 0
-while$ -- 89
+while$ -- 176
 width$ -- 0
-write$ -- 200
+write$ -- 385

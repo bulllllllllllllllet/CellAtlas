@@ -1,5 +1,15 @@
-\begin{thebibliography}{15}
+\begin{thebibliography}{29}
 \providecommand{\natexlab}[1]{#1}
+
+\bibitem[{Achanta et~al.(2012)Achanta, Shaji, Smith, Lucchi, Fua, and S{\"u}sstrunk}]{achanta2012slic}
+Achanta, R.; Shaji, A.; Smith, K.; Lucchi, A.; Fua, P.; and S{\"u}sstrunk, S. 2012.
+\newblock {SLIC} Superpixels Compared to State-of-the-Art Superpixel Methods.
+\newblock \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence}, 34(11): 2274--2282.
+
+\bibitem[{Campanella et~al.(2019)Campanella, Hanna, Geneslaw, Miraflor, {Werneck Krauss Silva}, Busam, Brogi, Reuter, Klimstra, and Fuchs}]{campanella2019clinical}
+Campanella, G.; Hanna, M.~G.; Geneslaw, L.; Miraflor, A.; {Werneck Krauss Silva}, V.; Busam, K.~J.; Brogi, E.; Reuter, V.~E.; Klimstra, D.~S.; and Fuchs, T.~J. 2019.
+\newblock Clinical-Grade Computational Pathology Using Weakly Supervised Deep Learning on Whole Slide Images.
+\newblock \emph{Nature Medicine}, 25: 1301--1309.
 
 \bibitem[{Chan et~al.(2019)Chan, Hosseini, Rowsell, Plataniotis, and Damaskinos}]{chan2019histosegnet}
 Chan, L.; Hosseini, M.~S.; Rowsell, C.; Plataniotis, K.~N.; and Damaskinos, S. 2019.
@@ -10,6 +20,16 @@ Chan, L.; Hosseini, M.~S.; Rowsell, C.; Plataniotis, K.~N.; and Damaskinos, S. 2
 Chen, R.~J.; Chen, C.; Li, Y.; Chen, T.~Y.; Trister, A.~D.; Krishnan, R.~G.; and Mahmood, F. 2022.
 \newblock Scaling Vision Transformers to Gigapixel Images via Hierarchical Self-Supervised Learning.
 \newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 16144--16155.
+
+\bibitem[{Chen et~al.(2024)Chen, Ding, Lu, Williamson, Jaume, Song, Chen, Zhang, Shao, Shaban, Williams, Oldenburg, Weishaupt, Wang, Vaidya, Le, Gerber, Sahai, Williams, and Mahmood}]{chen2024uni}
+Chen, R.~J.; Ding, T.; Lu, M.~Y.; Williamson, D. F.~K.; Jaume, G.; Song, A.~H.; Chen, B.; Zhang, A.; Shao, D.; Shaban, M.; Williams, M.; Oldenburg, L.; Weishaupt, L.~L.; Wang, J.~J.; Vaidya, A.; Le, L.~P.; Gerber, G.; Sahai, S.; Williams, W.; and Mahmood, F. 2024.
+\newblock Towards a General-Purpose Foundation Model for Computational Pathology.
+\newblock \emph{Nature Medicine}, 30: 850--862.
+
+\bibitem[{Chen et~al.(2021)Chen, Lu, Shaban, Chen, Chen, Williamson, and Mahmood}]{chen2021patchgcn}
+Chen, R.~J.; Lu, M.~Y.; Shaban, M.; Chen, C.; Chen, T.~Y.; Williamson, D. F.~K.; and Mahmood, F. 2021.
+\newblock Whole Slide Images Are 2D Point Clouds: Context-Aware Survival Prediction Using Patch-Based Graph Convolutional Networks.
+\newblock In \emph{Medical Image Computing and Computer Assisted Intervention (MICCAI)}, 339--349.
 
 \bibitem[{Cheng et~al.(2023)Cheng, Ye, Deng, Chen, Li, Wang, Su, Huang, Chen, Jiang, Sun, He, Zhang, Zhu, and Qiao}]{cheng2023sammed2d}
 Cheng, J.; Ye, J.; Deng, Z.; Chen, J.; Li, T.; Wang, H.; Su, Y.; Huang, Z.; Chen, J.; Jiang, L.; Sun, H.; He, J.; Zhang, S.; Zhu, M.; and Qiao, Y. 2023.
@@ -26,6 +46,11 @@ Graham, S.; Vu, Q.~D.; Raza, S.-e.-A.; Azam, A.; Tsang, Y.-W.; Kwak, J.~T.; and 
 \newblock {HoVer-Net}: Simultaneous Segmentation and Classification of Nuclei in Multi-Tissue Histology Images.
 \newblock \emph{Medical Image Analysis}, 58: 101563.
 
+\bibitem[{He et~al.(2020)He, Bergenstr{\aa}hle, Stenbeck, Abid, Andersson, Borg, Maaskola, Lundeberg, and Zou}]{he2020stnet}
+He, B.; Bergenstr{\aa}hle, L.; Stenbeck, L.; Abid, A.; Andersson, A.; Borg, {\AA}.; Maaskola, J.; Lundeberg, J.; and Zou, J. 2020.
+\newblock Integrating Spatial Gene Expression and Breast Tumour Morphology via Deep Learning.
+\newblock \emph{Nature Biomedical Engineering}, 4(8): 827--834.
+
 \bibitem[{Ho et~al.(2021)Ho, Yarlagadda, D'Alfonso, Hanna, Grabenstetter, Ntiamoah, Brogi, Tan, and Fuchs}]{ho2021dmmn}
 Ho, D.~J.; Yarlagadda, D. V.~K.; D'Alfonso, T.~M.; Hanna, M.~G.; Grabenstetter, A.; Ntiamoah, P.; Brogi, E.; Tan, L.~K.; and Fuchs, T.~J. 2021.
 \newblock Deep Multi-Magnification Networks for Multi-Class Breast Cancer Image Segmentation.
@@ -36,25 +61,60 @@ H{\"o}rst, F.; Rempe, M.; Heine, L.; Seibold, C.; Keyl, J.; Baldini, G.; Ugurel,
 \newblock {CellViT}: Vision Transformers for Precise Cell Segmentation and Classification.
 \newblock \emph{Medical Image Analysis}, 94: 103143.
 
+\bibitem[{Jampani et~al.(2018)Jampani, Sun, Liu, Yang, and Kautz}]{jampani2018ssn}
+Jampani, V.; Sun, D.; Liu, M.-Y.; Yang, M.-H.; and Kautz, J. 2018.
+\newblock Superpixel Sampling Networks.
+\newblock In \emph{Proceedings of the European Conference on Computer Vision (ECCV)}, 352--368.
+
 \bibitem[{Kirillov et~al.(2023)Kirillov, Mintun, Ravi, Mao, Rolland, Gustafson, Xiao, Whitehead, Berg, Lo, Doll{\'a}r, and Girshick}]{kirillov2023sam}
 Kirillov, A.; Mintun, E.; Ravi, N.; Mao, H.; Rolland, C.; Gustafson, L.; Xiao, T.; Whitehead, S.; Berg, A.~C.; Lo, W.-Y.; Doll{\'a}r, P.; and Girshick, R. 2023.
 \newblock Segment Anything.
 \newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 4015--4026.
+
+\bibitem[{Lee et~al.(2019)Lee, Lee, Kim, Kosiorek, Choi, and Teh}]{lee2019settransformer}
+Lee, J.; Lee, Y.; Kim, J.; Kosiorek, A.; Choi, S.; and Teh, Y.~W. 2019.
+\newblock Set Transformer: A Framework for Attention-Based Permutation-Invariant Neural Networks.
+\newblock In \emph{Proceedings of the 36th International Conference on Machine Learning}, volume~97 of \emph{Proceedings of Machine Learning Research}, 3744--3753. PMLR.
 
 \bibitem[{Liu et~al.(2024)Liu, Yang, van Diest, Pluim, and Veta}]{liu2024wsisam}
 Liu, H.; Yang, H.; van Diest, P.~J.; Pluim, J. P.~W.; and Veta, M. 2024.
 \newblock {WSI-SAM}: Multi-Resolution Segment Anything Model ({SAM}) for Histopathology Whole-Slide Images.
 \newblock In \emph{Proceedings of the MICCAI Workshop on Computational Pathology}, volume 254 of \emph{Proceedings of Machine Learning Research}, 25--37. PMLR.
 
+\bibitem[{Liu et~al.(2023)Liu, Xu, Bertasius, and Niethammer}]{liu2023simpleclick}
+Liu, Q.; Xu, Z.; Bertasius, G.; and Niethammer, M. 2023.
+\newblock {SimpleClick}: Interactive Image Segmentation with Simple Vision Transformers.
+\newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 22290--22300.
+
+\bibitem[{Lu et~al.(2021)Lu, Williamson, Chen, Chen, Barbieri, and Mahmood}]{lu2021clam}
+Lu, M.~Y.; Williamson, D. F.~K.; Chen, T.~Y.; Chen, R.~J.; Barbieri, M.; and Mahmood, F. 2021.
+\newblock Data-Efficient and Weakly Supervised Computational Pathology on Whole-Slide Images.
+\newblock \emph{Nature Biomedical Engineering}, 5: 555--570.
+
 \bibitem[{Ma et~al.(2024)Ma, He, Li, Han, You, and Wang}]{ma2024medsam}
 Ma, J.; He, Y.; Li, F.; Han, L.; You, C.; and Wang, B. 2024.
 \newblock Segment Anything in Medical Images.
 \newblock \emph{Nature Communications}, 15: 654.
 
+\bibitem[{Pati et~al.(2022)Pati, Jaume, Foncubierta-Rodr{\'i}guez, Feroce, Anniciello, Scognamiglio, Brancati, Fiche, Dubruc, Riccio, Di~Bonito, De~Pietro, Botti, Thiran, Frucci, Goksel, and Gabrani}]{pati2022hact}
+Pati, P.; Jaume, G.; Foncubierta-Rodr{\'i}guez, A.; Feroce, F.; Anniciello, A.~M.; Scognamiglio, G.; Brancati, N.; Fiche, M.; Dubruc, E.; Riccio, D.; Di~Bonito, M.; De~Pietro, G.; Botti, G.; Thiran, J.-P.; Frucci, M.; Goksel, O.; and Gabrani, M. 2022.
+\newblock Hierarchical Graph Representations in Digital Pathology.
+\newblock \emph{Medical Image Analysis}, 75: 102264.
+
 \bibitem[{Ryu et~al.(2023)Ryu, Puche, Shin, Park, Brattoli, Lee, Jung, Cho, Paeng, Ock, Yoo, and Pereira}]{ryu2023ocelot}
 Ryu, J.; Puche, A.~V.; Shin, J.; Park, S.; Brattoli, B.; Lee, J.; Jung, W.; Cho, S.~I.; Paeng, K.; Ock, C.-Y.; Yoo, D.; and Pereira, S. 2023.
 \newblock {OCELOT}: Overlapped Cell on Tissue Dataset for Histopathology.
 \newblock In \emph{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 23902--23912.
+
+\bibitem[{Schmauch et~al.(2020)Schmauch, Romagnoni, Pronier, Saillard, Maill{\'e}, Calderaro, Kamoun, Sefta, Toldo, Zaslavskiy, Clozel, Moarii, Courtiol, and Wainrib}]{schmauch2020he2rna}
+Schmauch, B.; Romagnoni, A.; Pronier, E.; Saillard, C.; Maill{\'e}, P.; Calderaro, J.; Kamoun, A.; Sefta, M.; Toldo, S.; Zaslavskiy, M.; Clozel, T.; Moarii, M.; Courtiol, P.; and Wainrib, G. 2020.
+\newblock A Deep Learning Model to Predict {RNA-Seq} Expression of Tumours from Whole Slide Images.
+\newblock \emph{Nature Communications}, 11: 3877.
+
+\bibitem[{Sofiiuk, Petrov, and Konushin(2022)}]{sofiiuk2022ritm}
+Sofiiuk, K.; Petrov, I.~A.; and Konushin, A. 2022.
+\newblock Reviving Iterative Training with Mask Guidance for Interactive Segmentation.
+\newblock In \emph{2022 IEEE International Conference on Image Processing (ICIP)}, 3141--3145.
 
 \bibitem[{Tokunaga et~al.(2019)Tokunaga, Teramoto, Yoshizawa, and Bise}]{tokunaga2019awmf}
 Tokunaga, H.; Teramoto, Y.; Yoshizawa, A.; and Bise, R. 2019.
@@ -71,9 +131,19 @@ Wang, S.; Rong, R.; Zhou, Q.; Yang, D.~M.; Zhang, X.; Zhan, X.; Bishop, J.; Chi,
 \newblock Deep Learning of Cell Spatial Organizations Identifies Clinically Relevant Insights in Tissue Images.
 \newblock \emph{Nature Communications}, 14: 7872.
 
+\bibitem[{Wang et~al.(2022)Wang, Yang, Zhang, Wang, Zhang, Yang, Huang, and Han}]{wang2022ctranspath}
+Wang, X.; Yang, S.; Zhang, J.; Wang, M.; Zhang, J.; Yang, W.; Huang, J.; and Han, X. 2022.
+\newblock Transformer-Based Unsupervised Contrastive Learning for Histopathological Image Classification.
+\newblock \emph{Medical Image Analysis}, 81: 102559.
+
 \bibitem[{Xu et~al.(2019)Xu, Song, Sun, Ku, Yang, Liu, Wang, Ma, and Xu}]{xu2019camel}
 Xu, G.; Song, Z.; Sun, Z.; Ku, C.; Yang, Z.; Liu, C.; Wang, S.; Ma, J.; and Xu, W. 2019.
 \newblock {CAMEL}: A Weakly Supervised Learning Framework for Histopathology Image Segmentation.
 \newblock In \emph{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, 10682--10691.
+
+\bibitem[{Zaheer et~al.(2017)Zaheer, Kottur, Ravanbakhsh, P{\'o}czos, Salakhutdinov, and Smola}]{zaheer2017deepsets}
+Zaheer, M.; Kottur, S.; Ravanbakhsh, S.; P{\'o}czos, B.; Salakhutdinov, R.; and Smola, A.~J. 2017.
+\newblock Deep Sets.
+\newblock In \emph{Advances in Neural Information Processing Systems}, volume~30, 3391--3401.
 
 \end{thebibliography}

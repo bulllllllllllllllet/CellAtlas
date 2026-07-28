@@ -1,28 +1,47 @@
 \relax 
 \bibstyle{aaai2027}
-\citation{chan2019histosegnet}
-\citation{xu2019camel}
-\citation{tokunaga2019awmf}
-\citation{vanrijthoven2021hooknet}
-\citation{ho2021dmmn}
+\citation{chan2019histosegnet,xu2019camel}
+\citation{campanella2019clinical,lu2021clam}
+\citation{tokunaga2019awmf,vanrijthoven2021hooknet,ho2021dmmn}
+\citation{wang2022ctranspath,chen2024uni}
+\citation{sofiiuk2022ritm,liu2023simpleclick}
 \citation{kirillov2023sam}
-\citation{ma2024medsam}
-\citation{cheng2023sammed2d}
+\citation{ma2024medsam,cheng2023sammed2d}
 \citation{deng2023sam_pathology}
 \citation{liu2024wsisam}
-\citation{graham2019hovernet}
-\citation{horst2024cellvit}
+\citation{graham2019hovernet,horst2024cellvit}
+\citation{he2020stnet,schmauch2020he2rna}
 \citation{ryu2023ocelot}
-\citation{wang2023ceograph}
+\citation{wang2023ceograph,pati2022hact,chen2021patchgcn}
 \citation{chen2022hipt}
 \newlabel{eq:problem}{{1}{2}{}{equation.1}{}}
+\newlabel{eq:cell}{{2}{2}{}{equation.2}{}}
+\citation{achanta2012slic}
+\citation{jampani2018ssn}
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
 \newlabel{fig:overview}{{1}{3}{}{figure.1}{}}
-\newlabel{eq:assignment}{{4}{3}{}{equation.4}{}}
-\newlabel{eq:pool}{{5}{3}{}{equation.5}{}}
-\newlabel{eq:hierarchy}{{11}{4}{}{equation.11}{}}
-\newlabel{eq:projection}{{16}{4}{}{equation.16}{}}
-\newlabel{eq:loss}{{17}{5}{}{equation.17}{}}
+\newlabel{eq:scales}{{3}{3}{}{equation.3}{}}
+\newlabel{eq:features}{{4}{3}{}{equation.4}{}}
+\newlabel{eq:assignment}{{5}{3}{}{equation.5}{}}
+\newlabel{eq:pool}{{6}{3}{}{equation.6}{}}
+\citation{zaheer2017deepsets,lee2019settransformer}
+\newlabel{eq:cell-affinity}{{7}{4}{}{equation.7}{}}
+\newlabel{eq:cell-attention}{{8}{4}{}{equation.8}{}}
+\newlabel{eq:cell-context}{{9}{4}{}{equation.9}{}}
+\newlabel{eq:cell-fusion}{{10}{4}{}{equation.10}{}}
+\newlabel{eq:hier-init}{{11}{4}{}{equation.11}{}}
+\newlabel{eq:bottom-up}{{12}{4}{}{equation.12}{}}
+\newlabel{eq:hierarchy}{{13}{4}{}{equation.13}{}}
+\newlabel{eq:prompt-sets}{{14}{4}{}{equation.14}{}}
+\newlabel{eq:prompt-encode}{{15}{4}{}{equation.15}{}}
+\newlabel{eq:task-token}{{16}{4}{}{equation.16}{}}
+\newlabel{eq:prompt-match}{{17}{4}{}{equation.17}{}}
+\newlabel{eq:node-feature}{{18}{4}{}{equation.18}{}}
+\newlabel{eq:graph-decode}{{19}{4}{}{equation.19}{}}
+\newlabel{eq:region-prob}{{20}{5}{}{equation.20}{}}
+\newlabel{eq:projection}{{21}{5}{}{equation.21}{}}
+\newlabel{eq:loss}{{22}{5}{}{equation.22}{}}
+\newlabel{eq:region-target}{{23}{5}{}{equation.23}{}}
 \newlabel{tab:patch-comparison}{{1}{6}{}{table.1}{}}
 \newlabel{tab:wsi-comparison}{{2}{6}{}{table.2}{}}
 \newlabel{fig:patch-qualitative}{{2}{6}{}{figure.2}{}}
@@ -31,19 +50,33 @@
 \newlabel{tab:wsi-per-class}{{3}{7}{}{table.3}{}}
 \newlabel{tab:ablations}{{4}{7}{}{table.4}{}}
 \bibdata{FewClick_AAAI27}
-\bibcite{chan2019histosegnet}{{1}{2019}{{Chan et~al.}}{{Chan, Hosseini, Rowsell, Plataniotis, and Damaskinos}}}
-\bibcite{chen2022hipt}{{2}{2022}{{Chen et~al.}}{{Chen, Chen, Li, Chen, Trister, Krishnan, and Mahmood}}}
-\bibcite{cheng2023sammed2d}{{3}{2023}{{Cheng et~al.}}{{Cheng, Ye, Deng, Chen, Li, Wang, Su, Huang, Chen, Jiang, Sun, He, Zhang, Zhu, and Qiao}}}
-\bibcite{deng2023sam_pathology}{{4}{2025}{{Deng et~al.}}{{Deng, Cui, Liu, Yao, Remedios, Bao, Landman, Wheless, Coburn, Wilson, Wang, Zhao, Fogo, Yang, Tang, and Huo}}}
-\bibcite{graham2019hovernet}{{5}{2019}{{Graham et~al.}}{{Graham, Vu, Raza, Azam, Tsang, Kwak, and Rajpoot}}}
-\bibcite{ho2021dmmn}{{6}{2021}{{Ho et~al.}}{{Ho, Yarlagadda, D'Alfonso, Hanna, Grabenstetter, Ntiamoah, Brogi, Tan, and Fuchs}}}
-\bibcite{horst2024cellvit}{{7}{2024}{{H{\"o}rst et~al.}}{{H{\"o}rst, Rempe, Heine, Seibold, Keyl, Baldini, Ugurel, Siveke, Gr{\"u}nwald, Egger, and Kleesiek}}}
-\bibcite{kirillov2023sam}{{8}{2023}{{Kirillov et~al.}}{{Kirillov, Mintun, Ravi, Mao, Rolland, Gustafson, Xiao, Whitehead, Berg, Lo, Doll{\'a}r, and Girshick}}}
-\bibcite{liu2024wsisam}{{9}{2024}{{Liu et~al.}}{{Liu, Yang, van Diest, Pluim, and Veta}}}
-\bibcite{ma2024medsam}{{10}{2024}{{Ma et~al.}}{{Ma, He, Li, Han, You, and Wang}}}
-\bibcite{ryu2023ocelot}{{11}{2023}{{Ryu et~al.}}{{Ryu, Puche, Shin, Park, Brattoli, Lee, Jung, Cho, Paeng, Ock, Yoo, and Pereira}}}
-\bibcite{tokunaga2019awmf}{{12}{2019}{{Tokunaga et~al.}}{{Tokunaga, Teramoto, Yoshizawa, and Bise}}}
-\bibcite{vanrijthoven2021hooknet}{{13}{2021}{{van Rijthoven et~al.}}{{van Rijthoven, Balkenhol, Sili{\c {n}}a, van~der Laak, and Ciompi}}}
-\bibcite{wang2023ceograph}{{14}{2023}{{Wang et~al.}}{{Wang, Rong, Zhou, Yang, Zhang, Zhan, Bishop, Chi, Wilhelm, Zhang, Pickering, Kris, Minna, Xie, and Xiao}}}
-\bibcite{xu2019camel}{{15}{2019}{{Xu et~al.}}{{Xu, Song, Sun, Ku, Yang, Liu, Wang, Ma, and Xu}}}
+\bibcite{achanta2012slic}{{1}{2012}{{Achanta et~al.}}{{Achanta, Shaji, Smith, Lucchi, Fua, and S{\"u}sstrunk}}}
+\bibcite{campanella2019clinical}{{2}{2019}{{Campanella et~al.}}{{Campanella, Hanna, Geneslaw, Miraflor, {Werneck Krauss Silva}, Busam, Brogi, Reuter, Klimstra, and Fuchs}}}
+\bibcite{chan2019histosegnet}{{3}{2019}{{Chan et~al.}}{{Chan, Hosseini, Rowsell, Plataniotis, and Damaskinos}}}
+\bibcite{chen2022hipt}{{4}{2022}{{Chen et~al.}}{{Chen, Chen, Li, Chen, Trister, Krishnan, and Mahmood}}}
+\bibcite{chen2024uni}{{5}{2024}{{Chen et~al.}}{{Chen, Ding, Lu, Williamson, Jaume, Song, Chen, Zhang, Shao, Shaban, Williams, Oldenburg, Weishaupt, Wang, Vaidya, Le, Gerber, Sahai, Williams, and Mahmood}}}
+\bibcite{chen2021patchgcn}{{6}{2021}{{Chen et~al.}}{{Chen, Lu, Shaban, Chen, Chen, Williamson, and Mahmood}}}
+\bibcite{cheng2023sammed2d}{{7}{2023}{{Cheng et~al.}}{{Cheng, Ye, Deng, Chen, Li, Wang, Su, Huang, Chen, Jiang, Sun, He, Zhang, Zhu, and Qiao}}}
+\bibcite{deng2023sam_pathology}{{8}{2025}{{Deng et~al.}}{{Deng, Cui, Liu, Yao, Remedios, Bao, Landman, Wheless, Coburn, Wilson, Wang, Zhao, Fogo, Yang, Tang, and Huo}}}
+\bibcite{graham2019hovernet}{{9}{2019}{{Graham et~al.}}{{Graham, Vu, Raza, Azam, Tsang, Kwak, and Rajpoot}}}
+\bibcite{he2020stnet}{{10}{2020}{{He et~al.}}{{He, Bergenstr{\r a}hle, Stenbeck, Abid, Andersson, Borg, Maaskola, Lundeberg, and Zou}}}
+\bibcite{ho2021dmmn}{{11}{2021}{{Ho et~al.}}{{Ho, Yarlagadda, D'Alfonso, Hanna, Grabenstetter, Ntiamoah, Brogi, Tan, and Fuchs}}}
+\bibcite{horst2024cellvit}{{12}{2024}{{H{\"o}rst et~al.}}{{H{\"o}rst, Rempe, Heine, Seibold, Keyl, Baldini, Ugurel, Siveke, Gr{\"u}nwald, Egger, and Kleesiek}}}
+\bibcite{jampani2018ssn}{{13}{2018}{{Jampani et~al.}}{{Jampani, Sun, Liu, Yang, and Kautz}}}
+\bibcite{kirillov2023sam}{{14}{2023}{{Kirillov et~al.}}{{Kirillov, Mintun, Ravi, Mao, Rolland, Gustafson, Xiao, Whitehead, Berg, Lo, Doll{\'a}r, and Girshick}}}
+\bibcite{lee2019settransformer}{{15}{2019}{{Lee et~al.}}{{Lee, Lee, Kim, Kosiorek, Choi, and Teh}}}
+\bibcite{liu2024wsisam}{{16}{2024}{{Liu et~al.}}{{Liu, Yang, van Diest, Pluim, and Veta}}}
+\bibcite{liu2023simpleclick}{{17}{2023}{{Liu et~al.}}{{Liu, Xu, Bertasius, and Niethammer}}}
+\bibcite{lu2021clam}{{18}{2021}{{Lu et~al.}}{{Lu, Williamson, Chen, Chen, Barbieri, and Mahmood}}}
+\bibcite{ma2024medsam}{{19}{2024}{{Ma et~al.}}{{Ma, He, Li, Han, You, and Wang}}}
+\bibcite{pati2022hact}{{20}{2022}{{Pati et~al.}}{{Pati, Jaume, Foncubierta-Rodr{\'i}guez, Feroce, Anniciello, Scognamiglio, Brancati, Fiche, Dubruc, Riccio, Di~Bonito, De~Pietro, Botti, Thiran, Frucci, Goksel, and Gabrani}}}
+\bibcite{ryu2023ocelot}{{21}{2023}{{Ryu et~al.}}{{Ryu, Puche, Shin, Park, Brattoli, Lee, Jung, Cho, Paeng, Ock, Yoo, and Pereira}}}
+\bibcite{schmauch2020he2rna}{{22}{2020}{{Schmauch et~al.}}{{Schmauch, Romagnoni, Pronier, Saillard, Maill{\'e}, Calderaro, Kamoun, Sefta, Toldo, Zaslavskiy, Clozel, Moarii, Courtiol, and Wainrib}}}
+\bibcite{sofiiuk2022ritm}{{23}{2022}{{Sofiiuk, Petrov, and Konushin}}{{}}}
+\bibcite{tokunaga2019awmf}{{24}{2019}{{Tokunaga et~al.}}{{Tokunaga, Teramoto, Yoshizawa, and Bise}}}
+\bibcite{vanrijthoven2021hooknet}{{25}{2021}{{van Rijthoven et~al.}}{{van Rijthoven, Balkenhol, Sili{\c {n}}a, van~der Laak, and Ciompi}}}
+\bibcite{wang2023ceograph}{{26}{2023}{{Wang et~al.}}{{Wang, Rong, Zhou, Yang, Zhang, Zhan, Bishop, Chi, Wilhelm, Zhang, Pickering, Kris, Minna, Xie, and Xiao}}}
+\bibcite{wang2022ctranspath}{{27}{2022}{{Wang et~al.}}{{Wang, Yang, Zhang, Wang, Zhang, Yang, Huang, and Han}}}
+\bibcite{xu2019camel}{{28}{2019}{{Xu et~al.}}{{Xu, Song, Sun, Ku, Yang, Liu, Wang, Ma, and Xu}}}
+\bibcite{zaheer2017deepsets}{{29}{2017}{{Zaheer et~al.}}{{Zaheer, Kottur, Ravanbakhsh, P{\'o}czos, Salakhutdinov, and Smola}}}
 \gdef \@abspage@last{9}
