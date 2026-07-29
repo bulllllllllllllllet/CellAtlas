@@ -175,7 +175,7 @@ WSI-SAM   &                         & 0.6041 & 0.6057 & 0.4397 & 0.1764 \\
 \begin{minipage}{89mm}
 \captionsetup{width=\linewidth}
 \centering\normalsize
-\setlength{\tabcolsep}{2.6pt}\renewcommand{\arraystretch}{1.12}
+\setlength{\tabcolsep}{1.5pt}\renewcommand{\arraystretch}{1.08}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc@{}}
 \toprule
 Method & Macro & Macro & Macro & Macro & Micro \\
@@ -184,10 +184,15 @@ Method & Macro & Macro & Macro & Macro & Micro \\
 SAM       & 0.3352 & 0.2344 & 0.2372 & 0.9628 & 0.5424 \\
 SAM-Med2D & 0.3478 & 0.2276 & 0.2987 & 0.7152 & 0.4555 \\
 WSI-SAM   & 0.4001 & 0.2871 & 0.2925 & 0.9533 & 0.6257 \\
-\textbf{FewClick} & \textbf{0.7495} & \textbf{0.6383} & \textbf{0.7456} & \textbf{0.7676} & \textbf{0.9237} \\
+\raisebox{3pt}{\textbf{FewClick}}
+& \shortstack{\textbf{0.5659}\\[-1pt]{\scriptsize\boldmath$\pm0.0700$}}
+& \shortstack{\textbf{0.4766}\\[-1pt]{\scriptsize\boldmath$\pm0.0609$}}
+& \shortstack{\textbf{0.5791}\\[-1pt]{\scriptsize\boldmath$\pm0.0685$}}
+& \shortstack{\textbf{0.5961}\\[-1pt]{\scriptsize\boldmath$\pm0.0740$}}
+& \shortstack{\textbf{0.7105}\\[-1pt]{\scriptsize\boldmath$\pm0.0912$}} \\
 \bottomrule
 \end{tabular*}
-\captionof{table}{Oracle-assisted whole-slide results on five WSIs and 12 tissues (60 WSI--tissue pairs and 300 FewClick candidate inferences). FewClick reports the best of five GT-selected candidates per pair; each SAM baseline uses the revised context-aware, GT-guided patchwise protocol. These attainable-protocol results complement the matched patch-level comparison.}
+\captionof{table}{Whole-slide results on five WSIs and 12 tissues. FewClick reports mean$\pm$SD over five outcome-blind prompt repeats; SAM baselines receive GT-guided positive-patch localization.}
 \end{minipage}
 \end{center}
 
@@ -201,21 +206,21 @@ WSI-SAM   & 0.4001 & 0.2871 & 0.2925 & 0.9533 & 0.6257 \\
 \toprule
 Tissue & FewClick & SAM & SAM-Med. & WSI-SAM \\
 \midrule
-Tumor epi. & \textbf{0.8859} & 0.5695 & 0.5468 & 0.6186 \\
-Tumor stroma & \textbf{0.8443} & 0.4067 & 0.4733 & 0.4976 \\
-Background & \textbf{0.9776} & 0.8263 & 0.4573 & 0.8481 \\
-Necrosis & \textbf{0.5590} & 0.0735 & 0.1484 & 0.1089 \\
-Normal gland & \textbf{0.6963} & 0.3060 & 0.3531 & 0.3652 \\
-Normal stroma & \textbf{0.6430} & 0.2082 & 0.2722 & 0.2719 \\
-Submucosa/serosa & \textbf{0.8500} & 0.4423 & 0.5080 & 0.5493 \\
-Muscle & \textbf{0.8611} & 0.5106 & 0.5643 & 0.6001 \\
-Lymph. aggregate & \textbf{0.7937} & 0.2064 & 0.3625 & 0.3231 \\
-Mucus & \textbf{0.6590} & 0.1066 & 0.1526 & 0.1522 \\
-Adipose & \textbf{0.6820} & 0.3374 & 0.2746 & 0.4139 \\
-Blood & \textbf{0.5419} & 0.0292 & 0.0604 & 0.0529 \\
+Tumor epi. & 0.5717 & 0.5695 & 0.5468 & \textbf{0.6186} \\
+Tumor stroma & \textbf{0.6662} & 0.4067 & 0.4733 & 0.4976 \\
+Background & \textbf{0.8711} & 0.8263 & 0.4573 & 0.8481 \\
+Necrosis & \textbf{0.3176} & 0.0735 & 0.1484 & 0.1089 \\
+Normal gland & \textbf{0.4991} & 0.3060 & 0.3531 & 0.3652 \\
+Normal stroma & \textbf{0.4379} & 0.2082 & 0.2722 & 0.2719 \\
+Submucosa/serosa & \textbf{0.6787} & 0.4423 & 0.5080 & 0.5493 \\
+Muscle & \textbf{0.6200} & 0.5106 & 0.5643 & 0.6001 \\
+Lymph. aggregate & \textbf{0.7574} & 0.2064 & 0.3625 & 0.3231 \\
+Mucus & \textbf{0.4502} & 0.1066 & 0.1526 & 0.1522 \\
+Adipose & \textbf{0.5644} & 0.3374 & 0.2746 & 0.4139 \\
+Blood & \textbf{0.3564} & 0.0292 & 0.0604 & 0.0529 \\
 \bottomrule
 \end{tabular*}
-\captionof{table}{Per-class whole-slide Dice under the oracle-assisted protocols described in the text. Best results are in bold.}
+\captionof{table}{Per-class whole-slide Dice. FewClick entries are five-repeat outcome-blind means; SAM baselines use GT-guided patchwise prompts. Best means are bold.}
 \end{minipage}
 \end{center}
 

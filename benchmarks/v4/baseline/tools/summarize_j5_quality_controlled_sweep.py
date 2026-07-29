@@ -27,6 +27,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--candidate-root", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--timestamp", default=datetime.now().strftime("%Y%m%d_%H%M%S"))
+    parser.add_argument(
+        "--limit-tasks",
+        type=int,
+        help="evaluate only the first N manifest tasks for a retained smoke run",
+    )
+    parser.add_argument(
+        "--task-index",
+        type=int,
+        help="evaluate one zero-based manifest task for a retained smoke run",
+    )
     return parser.parse_args()
 
 
@@ -62,6 +72,16 @@ def main() -> None:
         raise ValueError(f"expected 60 WSI-class tasks, got {len(run_manifest)}")
     if not (args.sweep_root / "complete.json").is_file():
         raise RuntimeError("sweep is not marked complete")
+    if args.limit_tasks is not None and args.task_index is not None:
+        raise ValueError("--limit-tasks and --task-index are mutually exclusive")
+    if args.task_index is not None:
+        if args.task_index < 0 or args.task_index >= len(run_manifest):
+            raise ValueError("--task-index must be in [0, 59]")
+        run_manifest = run_manifest.iloc[[args.task_index]].copy()
+    elif args.limit_tasks is not None:
+        if args.limit_tasks <= 0 or args.limit_tasks > len(run_manifest):
+            raise ValueError("--limit-tasks must be in [1, 60]")
+        run_manifest = run_manifest.head(args.limit_tasks).copy()
 
     _, class_rgbs = load_class_contract()
     rows: list[dict[str, object]] = []
@@ -78,30 +98,65 @@ def main() -> None:
         if (
             metadata.get("status") != "complete"
             or int(metadata.get("requested_candidate_count", -1)) != 5
-            or int(metadata.get("decoded_candidate_count", -1)) != 5
         ):
             raise RuntimeError(f"incomplete five-candidate result: {metadata_path}")
-        summaries = sorted(metadata["candidates"], key=lambda item: item["candidate_index"])
-        if [int(item["candidate_index"]) for item in summaries] != list(range(5)):
-            raise RuntimeError(f"candidate indices are not 0..4: {metadata_path}")
-        shape = tuple(map(int, summaries[0]["output_shape_10x"]))
-        mask_paths = [Path(item["mask_tiff"]) for item in summaries]
+        summaries = {
+            int(item["candidate_index"]): item for item in metadata["candidates"]
+        }
+        if len(summaries) != int(metadata.get("decoded_candidate_count", -1)):
+            raise RuntimeError(f"decoded candidate count mismatch: {metadata_path}")
+        if not summaries:
+            raise RuntimeError(f"all five candidates abstained: {metadata_path}")
+        shape = tuple(map(int, next(iter(summaries.values()))["output_shape_10x"]))
+        complete_indices = sorted(summaries)
+        mask_paths = [Path(summaries[index]["mask_tiff"]) for index in complete_indices]
         if not all(path.is_file() for path in mask_paths):
-            raise FileNotFoundError(f"missing candidate TIFF under {inference_dir}")
-        metrics = candidate_metrics(
+            raise FileNotFoundError(f"missing completed-candidate TIFF under {inference_dir}")
+        completed_metrics = candidate_metrics(
             Path(task.gt_path),
             class_rgbs[str(task.target_class_name)],
             shape,
             mask_paths,
         )
+        metrics_by_index = dict(zip(complete_indices, completed_metrics, strict=True))
+        gt_count = int(completed_metrics[0]["gt_positive_pixels"])
         prompt_rows = candidate_manifest.loc[
             candidate_manifest["wsi_id"].eq(task.wsi_id)
             & candidate_manifest["target_class_name"].eq(task.target_class_name)
         ].set_index("candidate_index")
         if set(prompt_rows.index) != set(range(5)):
             raise RuntimeError(f"missing prompt audit rows for {task.wsi_id}/{task.target_class_name}")
-        for candidate_index, values in enumerate(metrics):
+        for candidate_index in range(5):
             prompt = prompt_rows.loc[candidate_index]
+            candidate_metadata_path = (
+                inference_dir / f"candidate_{candidate_index:02d}" / "metadata.json"
+            )
+            candidate_metadata = json.loads(
+                candidate_metadata_path.read_text(encoding="utf-8")
+            )
+            status = str(candidate_metadata.get("status"))
+            if candidate_index in metrics_by_index:
+                if status != "complete":
+                    raise RuntimeError(
+                        f"candidate summary/status mismatch: {candidate_metadata_path}"
+                    )
+                values = metrics_by_index[candidate_index]
+                mask_tiff: str | None = str(
+                    Path(candidate_metadata["mask_tiff"])
+                )
+            else:
+                if (
+                    status != "abstained_prompt_conflict"
+                    or candidate_metadata.get("mask_returned") is not False
+                ):
+                    raise RuntimeError(
+                        f"unsupported missing-candidate status: {candidate_metadata_path}"
+                    )
+                # Formal intention-to-evaluate scoring: an abstention remains an
+                # abstention (no replacement mask) and receives the metrics of an
+                # empty prediction against the known-positive target class.
+                values = metric_fields(gt_count, 0, 0)
+                mask_tiff = None
             rows.append(
                 {
                     "wsi_id": str(task.wsi_id),
@@ -114,7 +169,13 @@ def main() -> None:
                     "positive_audit": bool(prompt["positive_audit"]),
                     "negative_audit": bool(prompt["negative_audit"]),
                     "prompt_json": str(prompt["prompt_json"]),
-                    "mask_tiff": str(mask_paths[candidate_index]),
+                    "candidate_status": status,
+                    "abstention_scoring": (
+                        "empty_prediction"
+                        if status == "abstained_prompt_conflict"
+                        else "not_applicable"
+                    ),
+                    "mask_tiff": mask_tiff,
                     **values,
                 }
             )
@@ -134,10 +195,13 @@ def main() -> None:
     frame = pd.DataFrame(rows).sort_values(
         ["candidate_index", "target_class", "wsi_id"]
     )
-    if len(frame) != 300 or frame.duplicated(
+    expected_candidates = len(run_manifest) * 5
+    if len(frame) != expected_candidates or frame.duplicated(
         ["wsi_id", "target_class_name", "candidate_index"]
     ).any():
-        raise RuntimeError("candidate metric table is not 300 unique rows")
+        raise RuntimeError(
+            f"candidate metric table is not {expected_candidates} unique rows"
+        )
 
     repeat_rows: list[dict[str, object]] = []
     for repeat, group in frame.groupby("candidate_index", sort=True):
@@ -203,10 +267,15 @@ def main() -> None:
         "sweep_root": str(args.sweep_root),
         "candidate_root": str(args.candidate_root),
         "candidate_selection_dice_blind": True,
+        "abstention_policy": "intention_to_evaluate_as_empty_prediction",
         "selection_rule": sorted(frame["selection_rule"].unique().tolist()),
         "n_tasks": int(frame[["wsi_id", "target_class_name"]].drop_duplicates().shape[0]),
         "n_candidates": len(frame),
         "n_repeats": len(repeats),
+        "n_complete_candidates": int(frame["candidate_status"].eq("complete").sum()),
+        "n_abstained_candidates": int(
+            frame["candidate_status"].eq("abstained_prompt_conflict").sum()
+        ),
         "semantic_audit_pass": bool(frame[["positive_audit", "negative_audit"]].all().all()),
         "minimum_target_fraction": float(frame["target_fraction"].min()),
         "overall": overall,
@@ -275,6 +344,11 @@ def main() -> None:
             "## 完整性审计",
             "",
             f"- 任务数：{audit['n_tasks']}；候选结果数：{audit['n_candidates']}；重复数：5。",
+            (
+                f"- 完整返回：{audit['n_complete_candidates']}；提示冲突弃权："
+                f"{audit['n_abstained_candidates']}。弃权不补抽，按空预测纳入"
+                " intention-to-evaluate 指标。"
+            ),
             f"- 正/负提示语义审计：{'通过' if audit['semantic_audit_pass'] else '失败'}。",
             f"- 入选 Patch 的最小目标占比：{audit['minimum_target_fraction']:.6f}。",
             "- 未按 Dice、IoU 或任何预测后指标删除、替换或挑选运行。",

@@ -25,7 +25,7 @@
 \maketitle
 
 \begin{abstract}
-Tissue segmentation in whole-slide images (WSIs) underpins tissue quantification, tumor-microenvironment analysis, and computer-assisted pathology. Existing supervised methods, however, typically require predefined tissue classes and extensive pixel-level annotations, limiting their ability to accommodate task-specific tissue definitions. General-purpose promptable segmentation models accept interactions such as points and boxes, but rely primarily on local visual appearance. Without explicit representations of cellular composition, tissue hierarchy, and long-range slide context, they struggle to identify spatially disconnected yet semantically consistent tissue from a few local prompts. We introduce FewClick, a cell-aware hierarchical region prompting framework for few-prompt binary segmentation of a user-specified tissue against the remainder of a WSI. FewClick extracts spatially aligned features from a multiscale WSI pyramid and constructs boundary-adaptive region tokens through differentiable soft assignment. Cell-to-region attention then aggregates cell embeddings, density, and composition into each region. Sparse hierarchical relations among fine-, intermediate-, and coarse-scale regions combine local morphology with broader tissue context through a gated adapter. Given a few positive and negative prompts, a set-based prompt encoder represents the target tissue, and a context-aware region decoder integrates prompt, neighborhood, and cross-scale evidence to predict the target over the entire slide before projecting region probabilities to a pixel-level mask. With one positive and one negative point, FewClick achieves 0.7418 macro Dice on matched patch episodes, outperforming SAM by 0.2769; on 5 WSIs and 12 tissues, it reaches 0.7495 macro Dice under an oracle-assisted protocol.
+Tissue segmentation in whole-slide images (WSIs) underpins tissue quantification, tumor-microenvironment analysis, and computer-assisted pathology. Existing supervised methods, however, typically require predefined tissue classes and extensive pixel-level annotations, limiting their ability to accommodate task-specific tissue definitions. General-purpose promptable segmentation models accept interactions such as points and boxes, but rely primarily on local visual appearance. Without explicit representations of cellular composition, tissue hierarchy, and long-range slide context, they struggle to identify spatially disconnected yet semantically consistent tissue from a few local prompts. We introduce FewClick, a cell-aware hierarchical region prompting framework for few-prompt binary segmentation of a user-specified tissue against the remainder of a WSI. FewClick constructs boundary-adaptive multiscale region tokens, enriches them with cell embeddings, density, and composition, and propagates sparse hierarchical context. A signed set encoder represents positive and negative prompts, while a region decoder predicts the target across the slide and projects region probabilities to pixels. With one positive and one negative point, FewClick achieves 0.7418 macro Dice on matched patch episodes, outperforming SAM by 0.2769. On 5 WSIs and 12 tissues, its outcome-blind macro Dice is $0.5659\pm0.0700$, a 41.4\% relative gain over WSI-SAM despite an oracle localization advantage given to the baseline.
 \end{abstract}
 
 \section{Introduction}
@@ -297,6 +297,17 @@ FewClick precomputes image features, cell embeddings, regions, and their hierarc
 \centering
 \includegraphics[width=\linewidth]{images/table_wsi_comparison.pdf}
 \refstepcounter{table}\label{tab:wsi-comparison}
+\vspace{3pt}
+
+\raggedright\footnotesize
+\textit{Whole-slide protocol.}
+We evaluate 60 WSI--tissue tasks (5 WSIs $\times$ 12 tissues).
+FewClick uses one positive and one negative point per task.
+Five prompt sets are frozen before inference and summarized as an
+outcome-blind mean$\pm$SD; one prompt-conflict abstention is scored
+as empty. To favor the local baselines, GT identifies every positive
+patch and supplies positive and negative points before the patch
+predictions are stitched.
 \end{minipage}
 
 \end{table*}
@@ -311,7 +322,7 @@ FewClick precomputes image features, cell embeddings, regions, and their hierarc
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{images/choosed/WSI_3panel_horizontal_matched_labels.png}
-\caption{Whole-slide qualitative examples of prompt-defined tissue masks across three representative WSIs. In each group, (b) is the ground-truth (GT) mask, (c) is our prediction, and (d--f) are the predictions of three different SAM-based methods. Our method uses a single set of positive and negative prompts, whereas the SAM-based methods use prompts optimized to better match their annotation paradigm. Green and red markers denote positive and negative prompts, respectively.}
+\caption{Whole-slide qualitative examples across three representative WSIs. In each group, (b) is GT, (c) is FewClick, and (d--f) are SAM-based predictions. FewClick uses one positive--negative prompt pair, whereas the baselines receive GT-guided patchwise prompts. The displayed FewClick masks are GT-selected best-of-five examples and illustrate attainable retrieval rather than the outcome-blind quantitative result.}
 \label{fig:wsi-qualitative}
 \end{figure*}
 
@@ -335,9 +346,7 @@ Table~\ref{tab:patch-comparison} summarizes the matched-episode results. Because
 
 
 \paragraph{Whole-slide results.}
-We next evaluate 12 tissue classes present in each of 5 WSIs. For FewClick, five $(1{+}1)$ prompt candidates are generated per WSI--class pair, yielding 300 candidate whole-slide inferences across 60 WSI--class pairs; the candidate with the highest ground-truth Dice is retained for each pair. The patchwise baselines are applied only to ground-truth-positive patches and then stitched, requiring 23,642 local calls per method. Both protocols therefore use oracle information---candidate selection for FewClick and positive-patch selection for the baselines. We report this experiment as attainable whole-slide performance under each inference paradigm; the matched patch-level evaluation remains the controlled comparison.
-
-FewClick obtains 0.7495 macro Dice, surpassing WSI-SAM, the strongest baseline on this metric, by 0.3494. It also improves macro mIoU and micro Dice by 0.3512 and 0.2980, respectively (Table~\ref{tab:wsi-comparison}). SAM attains high recall but low precision, indicating extensive false positives, whereas FewClick maintains balanced precision and recall. FewClick ranks first for all 12 tissues, with particularly large gains on normal gland, normal stroma, and lymphocyte aggregates, where cellular composition and contextual organization are informative (Figure~\ref{fig:wsi-qualitative} and Table~\ref{tab:wsi-per-class}). Necrosis and blood remain the most challenging classes.
+FewClick obtains $0.5659\pm0.0700$ macro Dice, exceeding WSI-SAM by 0.1658 (41.4\% relative); macro mIoU and micro Dice improve by 0.1895 and 0.0848, respectively (Table~\ref{tab:wsi-comparison}). Its lowest repeat (0.4557 macro Dice) remains above WSI-SAM (0.4001), showing that the average advantage is not driven by one favorable prompt set. SAM and WSI-SAM attain high recall but low precision despite oracle patch localization, whereas FewClick is more balanced. In a single deployment-style repeat, the 60 FewClick tasks use 120 points and 60 task-level WSI queries; each baseline uses 45,783 oracle-generated points and 23,642 local calls. These counts characterize interaction granularity rather than network forward passes or manual annotation time. FewClick outperforms the strongest SAM baseline in 11 of 12 tissues, with tumor epithelium as the exception (Table~\ref{tab:wsi-per-class}). Selecting the best of the same five candidates using GT raises macro Dice to 0.7493; we report this value only as an oracle sensitivity upper bound.
 
 \begin{figure}[!t]
 \centering
@@ -376,7 +385,7 @@ Replacing the signed set encoder with masked positive and negative mean prototyp
 
 \subsection{Additional Experiment}
 \paragraph{Cross-dataset generalization to an unseen tissue concept.}
-We further assess whether FewClick can segment a tissue concept absent from training using an independent dataset excluded from all model development. With all parameters frozen and tertiary lymphoid structures (TLSs) specified only through spatial prompts, FewClick achieves approximately $0.70$ Dice, suggesting that prompt-defined region representations can transfer beyond fixed training labels. Because this experiment evaluates a single unseen concept with local prompt examples, we interpret it as few-shot cross-dataset generalization rather than fully open-world segmentation. Detailed dataset information, prompt protocols, quantitative results, and qualitative TLS examples are provided in the supplementary material.
+We further test a tissue concept absent from training on an independent dataset excluded from model development. With all parameters frozen and tertiary lymphoid structures specified only through spatial prompts, FewClick achieves approximately $0.70$ Dice. Because this experiment covers one unseen concept with local prompt examples, we interpret it as few-shot cross-dataset generalization rather than fully open-world segmentation. Detailed data, prompt protocols, quantitative results, and qualitative examples are provided in the supplementary material.
 
 \FloatBarrier
 
@@ -386,4 +395,30 @@ We studied few-prompt segmentation of user-specified tissue in WSIs. FewClick bu
 With one positive and one negative point, FewClick improves macro Dice over SAM by 0.2769 on matched patch episodes; its advantage persists across larger prompt budgets. Component ablations produce macro-Dice drops of 0.0198--0.1763, confirming that learned regions, cellular evidence, multiscale context, and learned prompt-set aggregation all contribute. The current method nevertheless depends on upstream cell detection and representation quality, which may deteriorate under severe overlap, staining artifacts, or poor slide quality. Hierarchical region modeling also requires a trade-off among region count, resolution, and computation on very large WSIs. Finally, expert definitions of ambiguous tissue boundaries and composite structures may differ, and a single reference mask cannot represent all uncertainty. Future work will address cross-cancer and cross-center generalization, noisy prompts, open-concept adaptation, and iterative optimization from pathologist feedback.
 
 \bibliography{FewClick_AAAI27}
+
+\appendix
+\section{Reproducibility Details}
+\paragraph{Data and split.}
+FewClick requires aligned 12-tissue masks and cell annotations unavailable together in the public prompt-segmentation benchmarks, so we use a private colorectal H\&E cohort whose 200 WSIs are split by patient into 140/30/30 train/validation/test cases; the test set is unused, and the independent TLS case has six polygons (three prompted and three retrieval-only).
+
+\paragraph{Hyperparameter selection.}
+During Phase-6 development, we tried backbone learning rates $\{2.5{\times}10^{-7},10^{-6}\}$, decoder/context learning rates $\{2.5{\times}10^{-5},10^{-4}\}$, and three- or five-epoch budgets, selecting the final checkpoint on validation macro/micro Dice subject to fixed gates of $0.72/0.7987$ followed by Dice-priority Pareto selection.
+
+\paragraph{Randomness and runs.}
+Each configuration uses one deterministic seeded training run; patch evaluation uses one frozen manifest, while the whole-slide result averages five prompt sets frozen before inference. Seed 20260720 initializes Python, NumPy, PyTorch, and all CUDA devices, with the distributed rank added to the training seed.
+
+\paragraph{Computing environment.}
+Experiments used Ubuntu 22.04.4, two AMD EPYC 7Y83 CPUs (128 cores), 503\,GiB RAM, and up to four NVIDIA RTX 5880 Ada GPUs (48\,GiB; driver 550.67), with Python 3.10.19, PyTorch 2.9.1, CUDA 12.8, NumPy 2.2.6, pandas 2.3.3, and SciPy 1.15.3.
+
+\paragraph{Metrics and statistics.}
+We use $\mathrm{Dice}=2TP/(2TP+FP+FN)$ and $\mathrm{IoU}=TP/(TP+FP+FN)$ to measure region overlap, compute macro scores by averaging the 12 tissue-class scores and micro scores from pooled pixels, and complement overlap with Boundary F1 obtained by matching predicted and reference boundary pixels within two pixels.
+On the 885 paired common episodes under $(1{+}1)$ prompts, FewClick's episode-Dice gain over the strongest external baseline SAM has median $0.2485$ (IQR $0.0545$--$0.5253$), and a two-sided paired Wilcoxon signed-rank test gives $W=36{,}179$ and $p=4.84{\times}10^{-98}$; class-wise WSI scores are also reported to expose performance variation, while ablation differences remain descriptive.
+
+\paragraph{Model and optimization.}
+FewClick uses 64 regions, 256-D tokens, at most 255 cells, and a two-layer, four-head, six-neighbor graph decoder (dropout 0.1); Phase-2 region learning, Phase-3 cell fusion, Phase-5 prompt learning, and initial joint fitting each run for 30 epochs, followed by three-epoch prompt/decoder stabilization and five-epoch J5 refinement that updates only backbone layer~4 at LR $10^{-6}$ with batch size 2 per GPU, with all stage-specific settings provided in the released configurations.
+\paragraph{Baseline inference.}
+Baselines use released weights without adaptation and threshold 0.5; SAM and SAM-Med2D select the highest-predicted-IoU mask (SAM-Med2D input size 256), whereas WSI-SAM returns one fused mask.
+
+\paragraph{Code availability.}
+All code and frozen configurations will be released under the MIT License upon publication.
 \end{document}
