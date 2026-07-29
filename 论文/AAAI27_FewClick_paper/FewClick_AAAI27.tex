@@ -29,15 +29,13 @@ Tissue segmentation in whole-slide images (WSIs) underpins tissue quantification
 \end{abstract}
 
 \section{Introduction}
-Whole-slide images (WSIs) capture complete tissue morphology at extremely high resolution and underpin computational pathology and computer-assisted diagnosis. Accurate tissue segmentation supports tumor measurement, tumor-microenvironment analysis, region-of-interest selection, and downstream diagnostic modeling. However, a single WSI may contain billions of pixels with complex boundaries and substantial scale variation, making pixel-wise annotation costly and difficult to scale. Obtaining accurate, adaptable tissue maps from limited user interaction therefore remains a key challenge.
+Whole-slide images (WSIs) capture complete tissue morphology at gigapixel resolution and support tumor measurement, tumor-microenvironment analysis, region-of-interest selection, and downstream diagnostic modeling. Their complex boundaries and substantial scale variation, however, make dense pixel-level annotation expensive. Existing tissue segmenters usually predict predefined label spaces \cite{chan2019histosegnet,xu2019camel,tokunaga2019awmf,vanrijthoven2021hooknet}; study-specific structures or new tissue definitions therefore require additional annotations and retraining.
 
-Most existing approaches formulate tissue segmentation as multiclass prediction over a predefined label set, restricting outputs to classes seen during training. New tissue structures, specific cellular compositions, or study-defined targets generally require additional pixel-level annotations and model retraining. Because tissue definitions also vary across cancer types, cohorts, and clinical questions, fixed-class models are difficult to extend to new analysis tasks.
+Promptable methods such as RITM, SimpleClick, and the Segment Anything Model (SAM) instead specify a target from sparse points, boxes, or scribbles \cite{sofiiuk2022ritm,liu2023simpleclick,kirillov2023sam}. Their direct application to WSIs nevertheless faces three challenges. First, tissue identity depends not only on color and texture but also on cell types, density, and spatial composition \cite{graham2019hovernet,horst2024cellvit}. Second, the same tissue may occur in multiple disconnected regions, so a local prompt must convey semantics beyond its immediate neighborhood. Third, pathology spans cell morphology, local architecture, and global layout, while a single scale rarely preserves both precise boundaries and reliable tissue identity. These difficulties are compounded by gigapixel inference and prompt selection \cite{deng2023sam_pathology,liu2024wsisam}.
 
-Promptable models such as the Segment Anything Model (SAM) allow users to specify a target with sparse points, boxes, or scribbles without retraining a class-specific head. Direct application to WSIs nevertheless faces three challenges. Tissue identity depends not only on color, texture, and boundaries but also on cell types, density, and spatial composition. The same tissue may occur in multiple disconnected regions, making it difficult for a local prompt to convey the intended semantics across the slide. Moreover, pathology spans cell morphology, local architecture, and global layout, so a single scale rarely provides both precise boundaries and reliable tissue identity.
+Prompted WSI segmentation should therefore infer the tissue concept intended by a few interactions and retrieve semantically consistent regions across the slide rather than only expand a local boundary around each click. Our key observation is that visually similar regions may differ in cellular composition, whereas disconnected instances of the same tissue can share cellular and architectural patterns. This motivates a region-level representation that combines visual boundaries, cellular evidence, and hierarchical context.
 
-Prompted WSI segmentation should therefore infer the tissue concept intended by one or a few interactions and retrieve all semantically consistent regions across the slide, rather than merely expand a local boundary around each click. Our key observation is that visually similar regions may differ in cellular composition, whereas disconnected instances of the same tissue often share cellular and architectural patterns. We thus represent tissue as learnable regions that combine visual contours with cellular evidence and support hierarchical reasoning across fine, intermediate, and coarse scales.
-
-Figure~\ref{fig:overview} summarizes FewClick, a cell-aware hierarchical region prompting framework for few-prompt tissue segmentation in WSIs. FewClick forms learnable tissue regions from aligned multiscale visual features and enriches them with cell embeddings, density, and composition through cell-to-region attention. A sparse parent--child hierarchy and gated adapter integrate local boundaries, neighborhood information, and macroscopic context. Separate permutation-invariant encoders aggregate positive and negative prompts, while a context-aware decoder matches the resulting target representation against all WSI regions and projects region probabilities back to pixels. FewClick can therefore retrieve spatially disconnected regions that share cellular composition and tissue semantics.
+Figure~\ref{fig:overview} summarizes FewClick. Aligned multiscale features form learnable tissue regions that are enriched through cell-to-region attention and connected by a sparse parent--child hierarchy. Separate set encoders aggregate positive and negative prompts into a target representation, and a context-aware decoder predicts all fine regions before projecting their probabilities back to pixels.
 
 Our contributions are fourfold. (1) We formulate WSI segmentation as prompt-defined binary tissue retrieval rather than fixed-channel multiclass prediction. (2) We introduce differentiable, cell-aware tissue regions that jointly encode visual features, cell embeddings, density, and composition. (3) We design sparse bottom-up and top-down interaction across aligned fine, intermediate, and coarse regions. (4) We combine signed prompt encoding with context-aware region decoding to use positive and negative evidence throughout the slide. Controlled comparisons show consistent gains over three promptable baselines, while ablations verify the contributions of learnable regions, cellular evidence, and multiscale context.
 
@@ -55,7 +53,7 @@ HoVer-Net and CellViT encode nuclear morphology \cite{graham2019hovernet,horst20
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{images/main_picture.pdf}
-\caption{Overview of FewClick. Multiscale learnable regions first integrate cellular evidence and hierarchical context. Positive and negative prompts then define the tissue concept decoded over the WSI.}
+\caption{Overview of FewClick. Aligned multiscale features are partitioned into learnable regions, fused with cell evidence, and propagated through a sparse hierarchy. Positive and negative prompts define the target tissue; a context-aware decoder predicts fine-region probabilities, which are projected to pixels as the final mask.}
 \label{fig:overview}
 \end{figure*}
 
@@ -77,13 +75,13 @@ where $\widehat{M}(x)$ is the target probability at $x\in\Omega$. Episodes vary 
 \subsection{Molecularly Guided Cell Learning}
 Tissue identity depends not only on color and texture but also on cellular morphology, phenotype, density, and composition. FewClick therefore uses an independent cell branch to provide microscopic evidence. This branch describes cells without directly determining tissue borders, preventing a few atypical cells from dominating region formation.
 
-For detected cell $i$, let $u_i$ be its center in reference coordinates. A cell encoder maps an H\&E neighborhood centered at $u_i$ to
+For detected cell $i$, let $u_i$ be its center in reference coordinates. The cell representation combines normalized position, log cell area, a one-hot nuclei-class label, and an XCellFormer embedding extracted from an H\&E neighborhood centered at $u_i$:
 \begin{equation}
-z_i=E_{\mathrm{cell}}(I;u_i),\qquad
+z_i=[u_i,\log(1+a_i),h_i,e_i],\qquad
 z_i\in\mathbb{R}^{D_z},\quad i=1,\ldots,N,
 \label{eq:cell}
 \end{equation}
-where $N$ is the cell count and $D_z$ the embedding dimension. The encoder is pretrained on registered H\&E and multiplex immunofluorescence data using molecular expression supervision, then frozen or updated at a reduced learning rate during joint training.
+where $a_i$ is cell area, $h_i$ is the nuclei-class one-hot vector, $e_i$ is the learned cellular embedding, $N$ is the cell count, and $D_z$ is the resulting dimension. XCellFormer is pretrained on registered H\&E and multiplex immunofluorescence data using molecular expression supervision. Its extracted features are used to supply cell-level morphology and phenotype information.
 
 The resulting pairs $\{(u_i,z_i)\}_{i=1}^{N}$ associate microscopic evidence with learned regions after morphology-based region formation.
 
@@ -145,7 +143,12 @@ c_{s,k}=\sum_{i=1}^{N_s}\alpha_{s,k,i}W_vz_i,
 \qquad c_{s,k}\in\mathbb{R}^{D},
 \label{eq:cell-context}
 \end{equation}
-We also compute statistics $\rho_{s,k}$ comprising cell density, soft group proportions, and embedding moments. The cell-aware token is
+In addition to attention pooling, we explicitly retain a soft-assignment-calibrated cell-count statistic. Let $\bar A_{s,k,i}=A_s(\xi_s(u_i),k)/\sum_{\ell=1}^{K_s}A_s(\xi_s(u_i),\ell)$ and let $\gamma_s=N_s^{\mathrm{total}}/\max(\lvert\mathcal{I}_s\rvert,1)$ correct for the retained cells in the feature cache. We compute
+\begin{equation}
+\rho_{s,k}=\log\!\left(1+\gamma_s\sum_{i\in\mathcal{I}_s}\bar A_{s,k,i}\right),
+\label{eq:cell-count}
+\end{equation}
+where $\mathcal{I}_s$ indexes retained valid cells. Thus, $\rho_{s,k}$ is the log of the estimated cell count assigned to region $k$, rather than an area-normalized physical density. Nuclei-class composition, cell area, spatial location, and embedding-distribution information are represented implicitly by the attention-pooled context $c_{s,k}$ instead of by separate hand-crafted proportion or moment features. The cell-aware token is
 \begin{equation}
 \widetilde r_{s,k}=
 \operatorname{MLP}\!\left(
@@ -153,7 +156,7 @@ We also compute statistics $\rho_{s,k}$ comprising cell density, soft group prop
 \right).
 \label{eq:cell-fusion}
 \end{equation}
-Explicit density preserves low cellularity as evidence for adipose, mucinous, or necrotic tissue.
+The explicit count preserves low cellularity as evidence for adipose, mucinous, or necrotic tissue.
 
 \subsection{Sparse Hierarchical Reasoning}
 One scale cannot simultaneously provide precise boundaries and reliable tissue identity, yet dense attention over all WSI regions is intractable. FewClick instead constructs a sparse hierarchy from physical overlap: fine regions connect to covering intermediate regions, which connect to coarse regions. Bottom-up propagation lets macroscopic regions absorb local boundaries and cellular composition; top-down propagation returns broader tissue context to fine regions.
@@ -368,7 +371,7 @@ We evaluate four architectural ablations on a fixed 4,000-episode validation set
 \includegraphics[width=\columnwidth]{images/table_ablation.pdf}
 \refstepcounter{table}\label{tab:ablations}
 % Locally tighten the gap before the following running text.
-\vspace*{-6pt}
+
 \end{table}
 
 \paragraph{Learnable regions.}
@@ -390,35 +393,13 @@ We further test a tissue concept absent from training on an independent dataset 
 \FloatBarrier
 
 \section{Conclusion}
-We studied few-prompt segmentation of user-specified tissue in WSIs. FewClick builds boundary-adaptive tissue regions from aligned multiscale features, injects cell embeddings, density, and composition through cell-to-region attention, and exchanges information across a sparse hierarchy. Separate positive and negative prompt encoders define the current tissue concept, while a context-aware graph decoder evaluates candidates across the slide and projects region probabilities to pixels. This design targets disconnected but semantically consistent tissue instead of expanding only around prompted locations.
+We studied the segmentation of user-specified tissue in whole-slide images (WSIs) from sparse interactive prompts and introduced FewClick. The method constructs learnable, boundary-adaptive tissue regions from physically aligned fine-, intermediate-, and coarse-scale fields of view. It injects microscopic evidence, including cell embeddings, cell density, and cell composition, into region representations through cell--region attention, and integrates local boundaries with global tissue context through sparse cross-scale hierarchical modeling. Positive and negative prompts are separately encoded as sets to define the tissue concept for the current task. A context-aware graph decoder then matches and predicts regions across the slide, while soft region assignments recover pixel-level masks. This design enables the model to retrieve spatially disconnected target regions that remain consistent in cellular composition and tissue semantics, rather than merely expanding connected areas around clicked locations.
 
-With one positive and one negative point, FewClick improves macro Dice over SAM by 0.2769 on matched patch episodes; its advantage persists across larger prompt budgets. Component ablations produce macro-Dice drops of 0.0198--0.1763, confirming that learned regions, cellular evidence, multiscale context, and learned prompt-set aggregation all contribute. The current method nevertheless depends on upstream cell detection and representation quality, which may deteriorate under severe overlap, staining artifacts, or poor slide quality. Hierarchical region modeling also requires a trade-off among region count, resolution, and computation on very large WSIs. Finally, expert definitions of ambiguous tissue boundaries and composite structures may differ, and a single reference mask cannot represent all uncertainty. Future work will address cross-cancer and cross-center generalization, noisy prompts, open-concept adaptation, and iterative optimization from pathologist feedback.
+Experiments show that, with one positive and one negative prompt on matched patch interaction episodes, FewClick improves macro Dice over SAM by 0.2769; this advantage persists under larger prompt budgets. Component ablations further demonstrate the complementary contributions of learnable regionization, cell-aware representations, multiscale hierarchical context, and set-based prompt encoding. These results indicate that incorporating microscopic cellular evidence and multiscale tissue structure into prompt-conditioned, region-level reasoning helps recover global tissue semantics from sparse local interactions.
+
+Current cross-dataset validation remains limited in cancer types, staining conditions, and centers; broader multicenter evaluation is needed to establish robustness to domain shift. Performance also depends on prompt placement and coverage of tissue heterogeneity, so ambiguous or atypical clicks may provide insufficient evidence.
+
+Future work will investigate domain-generalized training and evaluation across datasets and cancer types, combining multicenter data, domain-robust representations, and adaptation mechanisms for unseen tissue concepts to improve transferability in real pathology workflows. We will also explore strategies to reduce sensitivity to prompt placement, including uncertainty-based click recommendation, interactive prompt-quality assessment, prompt training robust to positional perturbations, and adaptive follow-up queries for conflicting or low-confidence predictions. These directions aim to obtain reliable whole-slide tissue segmentation with fewer and more stable interactions.
 
 \bibliography{FewClick_AAAI27}
-
-\appendix
-\section{Reproducibility Details}
-\paragraph{Data and split.}
-FewClick requires aligned 12-tissue masks and cell annotations unavailable together in the public prompt-segmentation benchmarks, so we use a private colorectal H\&E cohort whose 200 WSIs are split by patient into 140/30/30 train/validation/test cases; the test set is unused, and the independent TLS case has six polygons (three prompted and three retrieval-only).
-
-\paragraph{Hyperparameter selection.}
-During Phase-6 development, we tried backbone learning rates $\{2.5{\times}10^{-7},10^{-6}\}$, decoder/context learning rates $\{2.5{\times}10^{-5},10^{-4}\}$, and three- or five-epoch budgets, selecting the final checkpoint on validation macro/micro Dice subject to fixed gates of $0.72/0.7987$ followed by Dice-priority Pareto selection.
-
-\paragraph{Randomness and runs.}
-Each configuration uses one deterministic seeded training run; patch evaluation uses one frozen manifest, while the whole-slide result averages five prompt sets frozen before inference. Seed 20260720 initializes Python, NumPy, PyTorch, and all CUDA devices, with the distributed rank added to the training seed.
-
-\paragraph{Computing environment.}
-Experiments used Ubuntu 22.04.4, two AMD EPYC 7Y83 CPUs (128 cores), 503\,GiB RAM, and up to four NVIDIA RTX 5880 Ada GPUs (48\,GiB; driver 550.67), with Python 3.10.19, PyTorch 2.9.1, CUDA 12.8, NumPy 2.2.6, pandas 2.3.3, and SciPy 1.15.3.
-
-\paragraph{Metrics and statistics.}
-We use $\mathrm{Dice}=2TP/(2TP+FP+FN)$ and $\mathrm{IoU}=TP/(TP+FP+FN)$ to measure region overlap, compute macro scores by averaging the 12 tissue-class scores and micro scores from pooled pixels, and complement overlap with Boundary F1 obtained by matching predicted and reference boundary pixels within two pixels.
-On the 885 paired common episodes under $(1{+}1)$ prompts, FewClick's episode-Dice gain over the strongest external baseline SAM has median $0.2485$ (IQR $0.0545$--$0.5253$), and a two-sided paired Wilcoxon signed-rank test gives $W=36{,}179$ and $p=4.84{\times}10^{-98}$; class-wise WSI scores are also reported to expose performance variation, while ablation differences remain descriptive.
-
-\paragraph{Model and optimization.}
-FewClick uses 64 regions, 256-D tokens, at most 255 cells, and a two-layer, four-head, six-neighbor graph decoder (dropout 0.1); Phase-2 region learning, Phase-3 cell fusion, Phase-5 prompt learning, and initial joint fitting each run for 30 epochs, followed by three-epoch prompt/decoder stabilization and five-epoch J5 refinement that updates only backbone layer~4 at LR $10^{-6}$ with batch size 2 per GPU, with all stage-specific settings provided in the released configurations.
-\paragraph{Baseline inference.}
-Baselines use released weights without adaptation and threshold 0.5; SAM and SAM-Med2D select the highest-predicted-IoU mask (SAM-Med2D input size 256), whereas WSI-SAM returns one fused mask.
-
-\paragraph{Code availability.}
-All code and frozen configurations will be released under the MIT License upon publication.
 \end{document}

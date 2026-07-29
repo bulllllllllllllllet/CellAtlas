@@ -147,11 +147,11 @@ INPUT /home/zhaoyh/TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm5.tfm
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
+INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
 OUTPUT FewClick_AAAI27.pdf
 INPUT /home/zhaoyh/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map
 INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc
-INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
-INPUT /home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
 INPUT ./images/main_picture.pdf
 INPUT ./images/main_picture.pdf
 INPUT ./images/main_picture.pdf
