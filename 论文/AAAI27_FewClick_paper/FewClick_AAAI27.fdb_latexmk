@@ -1,13 +1,13 @@
 # Fdb version 4
-["bibtex FewClick_AAAI27"] 1785310423.96353 "FewClick_AAAI27.aux" "FewClick_AAAI27.bbl" "FewClick_AAAI27" 1785310736.8077 0
+["bibtex FewClick_AAAI27"] 1785313490.01682 "FewClick_AAAI27.aux" "FewClick_AAAI27.bbl" "FewClick_AAAI27" 1785314812.59247 0
   "./FewClick_AAAI27.bib" 1785295450.90641 13864 b09d93f2d01edc2274b8ea8dd236e3ef ""
   "./aaai2027.bst" 1785145980.6412 30207 bd248dfe461b9b2fc7481a44feafe197 ""
-  "FewClick_AAAI27.aux" 1785310736.60305 6408 9913ad28128bb51cf240d9aec877bc43 "pdflatex"
+  "FewClick_AAAI27.aux" 1785314812.48511 6408 9913ad28128bb51cf240d9aec877bc43 "pdflatex"
   (generated)
   "FewClick_AAAI27.bbl"
   "FewClick_AAAI27.blg"
   (rewritten before read)
-["pdflatex"] 1785310736.13173 "FewClick_AAAI27.tex" "FewClick_AAAI27.pdf" "FewClick_AAAI27" 1785310736.80805 0
+["pdflatex"] 1785314812.17655 "FewClick_AAAI27.tex" "FewClick_AAAI27.pdf" "FewClick_AAAI27" 1785314812.59264 0
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc" 1698694482 2914 fdbc4a54b9bc76f4551b5303f2737d33 ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/jknappen/ec/ecrm1000.tfm" 1136768653 3584 adb004a0c8e7c46ee66cad73671f37b4 ""
   "/home/zhaoyh/TinyTeX/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
@@ -106,14 +106,14 @@
   "/home/zhaoyh/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1783525617 168480 9e4355181067b1d0d26e5bf9e0af1eb7 ""
   "/home/zhaoyh/TinyTeX/texmf-var/web2c/pdftex/pdflatex.fmt" 1783524185 2250948 7f9d598b318039e0cc09009c9e1166ea ""
   "/home/zhaoyh/TinyTeX/texmf.cnf" 1783523989.51087 637 edd806fb06a89761a6034e1968af9017 ""
-  "FewClick_AAAI27.aux" 1785310736.60305 6408 9913ad28128bb51cf240d9aec877bc43 "pdflatex"
-  "FewClick_AAAI27.bbl" 1785310423.97591 12106 bcee0ab0a03008db61066fe15bc1150e "bibtex FewClick_AAAI27"
-  "FewClick_AAAI27.tex" 1785310321.74515 34345 afc94b53673d9295948964e6f4e20d9f ""
+  "FewClick_AAAI27.aux" 1785314812.48511 6408 9913ad28128bb51cf240d9aec877bc43 "pdflatex"
+  "FewClick_AAAI27.bbl" 1785313490.02837 12106 bcee0ab0a03008db61066fe15bc1150e "bibtex FewClick_AAAI27"
+  "FewClick_AAAI27.tex" 1785314803.84911 34321 93d539cfcc2a7e79f5428cc2f785cfeb ""
   "aaai2027.sty" 1785145980.6372 16915 1b1c792e2acfbbd8b672259e267b95d8 ""
   "images/choosed/1p_3p_5p_horizontal_large_labels.png" 1785231937.01071 751599 82a61956f97f229cf28a5e15a722a31b ""
   "images/choosed/WSI_3panel_horizontal_matched_labels.png" 1785232063.88128 602219 e3240cd772d537e391d67fce61212787 ""
   "images/figure_prompt_budget_curve.pdf" 1785292591.16887 23042 9e5e3a994954253e689757882dd036f1 ""
-  "images/main_picture.pdf" 1785310693.10215 27485386 625707c102599564badba5b8c5477688 ""
+  "images/main_picture_compressed.pdf" 1785314798.54511 2068640 3d4ecabeeb2ae725ec7a5ff2ad9910e8 ""
   "images/table_ablation.pdf" 1785292591.71688 17023 c349695329f84142e42a6624f2911576 ""
   "images/table_patch_comparison.pdf" 1785292590.94887 14480 e96023b3e6eb049bdce5d3b6e4568310 ""
   "images/table_wsi_comparison.pdf" 1785292591.35688 18567 9407d81d3dc97ffa33e10f4ae121dbd0 ""

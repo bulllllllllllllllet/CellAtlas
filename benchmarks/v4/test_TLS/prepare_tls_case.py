@@ -32,6 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--level0-downsample", type=int, default=4)
     parser.add_argument("--tile-size", type=int, default=512)
     parser.add_argument("--stride", type=int, default=384)
+    parser.add_argument("--split", choices=("val", "test"), default="val")
     parser.add_argument("--output-root", type=Path, default=Path("/nfs-medical3/zyh/v4/test_TLS"))
     parser.add_argument("--timestamp")
     return parser.parse_args()
@@ -126,7 +127,7 @@ def main() -> None:
     negatives, thumbnail = choose_negative_points(slide, polygons, args.negative_count)
     rows = build_tile_rows(
         args.wsi_id, str(args.wsi_path), width_level0, height_level0,
-        args.level0_downsample, args.tile_size, args.stride, "val",
+        args.level0_downsample, args.tile_size, args.stride, args.split,
     )
     width_10x, height_10x, downsample = validate_tile_rows(rows)
     tile_index = output / "wsi_tile_index.parquet"
@@ -163,7 +164,8 @@ def main() -> None:
     cv2.imwrite(str(preview_path), preview)
 
     summary = {
-        "timestamp": stamp, "wsi_path": str(args.wsi_path), "annotation_json": str(args.annotation_json),
+        "timestamp": stamp, "split": args.split,
+        "wsi_path": str(args.wsi_path), "annotation_json": str(args.annotation_json),
         "wsi_dimensions_level0": [width_level0, height_level0],
         "level_dimensions": [list(value) for value in slide.level_dimensions],
         "level_downsamples": list(slide.level_downsamples), "level0_downsample": downsample,

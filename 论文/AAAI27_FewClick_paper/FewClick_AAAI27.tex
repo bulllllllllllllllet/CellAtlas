@@ -52,7 +52,7 @@ HoVer-Net and CellViT encode nuclear morphology \cite{graham2019hovernet,horst20
 \section{Method}
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{images/main_picture.pdf}
+\includegraphics[width=\textwidth]{images/main_picture_compressed.pdf}
 \caption{Overview of FewClick. Aligned multiscale features are partitioned into learnable regions, fused with cell evidence, and propagated through a sparse hierarchy. Positive and negative prompts define the target tissue; a context-aware decoder predicts fine-region probabilities, which are projected to pixels as the final mask.}
 \label{fig:overview}
 \end{figure*}
@@ -334,7 +334,7 @@ predictions are stitched.
 
 \subsection{Experimental Setup}
 \paragraph{Data splits and episodic evaluation.}
-We use a development cohort of 200 H\&E WSIs, split at the slide level into 140 training, 30 validation, and 30 held-out test slides. The test set remains sealed during model development. Ablations are conducted on a fixed validation manifest of 4,000 episodes; each training epoch contains 20,000 episodes. An episode specifies a WSI region, a target tissue, its binary mask, positive prompts, and optional hard negative prompts. Unless stated otherwise, all variants share the data split, prompt manifest, random seed, augmentation, and optimization schedule. Components downstream of an ablated representation are retrained to avoid distribution mismatch with the full-model decoder.
+We split 200 H\&E WSIs into 140/30/30 training/validation/test slides; all comparisons use the sealed test set, while model selection, tuning, and ablations use validation only. The fixed ablation manifest has 4,000 episodes, while each training epoch contains 20,000 episodes. An episode specifies a WSI region, a target tissue, its binary mask, positive prompts, and optional hard negative prompts. Unless stated otherwise, all variants share the split, prompt manifest, random seed, augmentation, and optimization schedule. Components downstream of an ablated representation are retrained to avoid distribution mismatch with the full-model decoder.
 
 \paragraph{Baselines and metrics.}
 We compare FewClick with SAM, SAM-Med2D, and WSI-SAM using their public pretrained weights without adaptation to our cohort. Patch-level methods receive identical images and prompt coordinates at each prompt budget. We report macro Dice (the primary metric), micro Dice, mIoU, and Boundary F1 with a two-pixel tolerance. Macro metrics weight episodes or tissue classes equally, whereas micro Dice aggregates pixel counts.

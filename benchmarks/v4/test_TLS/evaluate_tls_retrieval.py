@@ -48,6 +48,10 @@ def counts(prediction: np.ndarray, target: np.ndarray) -> dict:
     }
 
 
+def optional_counts(prediction: np.ndarray, target: np.ndarray) -> dict | None:
+    return counts(prediction, target) if bool(target.any()) else None
+
+
 def overlay(image: np.ndarray, mask: np.ndarray, color: tuple[int, int, int]) -> np.ndarray:
     result = image.astype(np.float32).copy()
     active = mask.astype(bool)
@@ -131,11 +135,17 @@ def main() -> None:
     prompts = json.loads(Path(case["prompt_json"]).read_text(encoding="utf-8"))
     per_polygon = []
     union = np.zeros((height, width), np.uint8)
+    prompted_union = np.zeros_like(union)
+    held_out_union = np.zeros_like(union)
     prompted = set(map(int, case["positive_polygon_indices"]))
     for index, polygon in enumerate(polygons):
         target = np.zeros_like(union)
         cv2.fillPoly(target, [np.rint(polygon / downsample).astype(np.int32)], 1)
         union |= target
+        if index in prompted:
+            prompted_union |= target
+        else:
+            held_out_union |= target
         per_polygon.append({
             "polygon_index": index, "prompted": index in prompted,
             "area_pixels_10x": int(target.sum()), **counts(prediction, target.astype(bool)),
@@ -144,15 +154,39 @@ def main() -> None:
         args.inference_dir / f"tls_review_panel_{stamp}.png",
         wsi_path, prediction, union.astype(bool), prompts,
     )
+    prompted_rows = [row for row in per_polygon if row["prompted"]]
+    held_out_rows = [row for row in per_polygon if not row["prompted"]]
+    held_out_target = held_out_union.astype(bool)
+    held_out_evaluation_domain = ~prompted_union.astype(bool)
+    held_out_prediction = prediction & held_out_evaluation_domain
     report = {
         "timestamp": stamp, "inference_dir": str(args.inference_dir),
         "case_manifest": str(args.case_manifest), "annotation_json": str(args.annotation_json),
-        "union": counts(prediction, union.astype(bool)), "per_polygon": per_polygon,
-        "prompted_macro_recall": float(np.mean([row["recall"] for row in per_polygon if row["prompted"]])),
-        "held_out_macro_recall": float(np.mean([row["recall"] for row in per_polygon if not row["prompted"]])),
+        "union": counts(prediction, union.astype(bool)),
+        "prompted_union": optional_counts(prediction, prompted_union.astype(bool)),
+        "held_out_union": optional_counts(prediction, held_out_union.astype(bool)),
+        "held_out_censored_prompted_region": optional_counts(
+            held_out_prediction, held_out_target
+        ),
+        "per_polygon": per_polygon,
+        "prompted_polygon_count": len(prompted_rows),
+        "held_out_polygon_count": len(held_out_rows),
+        "prompted_macro_recall": float(np.mean([row["recall"] for row in prompted_rows])),
+        "held_out_macro_recall": (
+            float(np.mean([row["recall"] for row in held_out_rows])) if held_out_rows else None
+        ),
+        "held_out_retrieved_recall_ge_0_1": (
+            float(np.mean([row["recall"] >= 0.1 for row in held_out_rows])) if held_out_rows else None
+        ),
+        "held_out_retrieved_recall_ge_0_5": (
+            float(np.mean([row["recall"] >= 0.5 for row in held_out_rows])) if held_out_rows else None
+        ),
         "review_panel": review,
         "binary_contract": {"prediction_values": [False, True], "ground_truth_values": [False, True]},
-        "interpretation": "held_out polygon recall measures prompt-driven retrieval; human visual review remains pending",
+        "interpretation": (
+            "held-out recall measures prompt-driven retrieval; held_out_censored_prompted_region "
+            "excludes prompted TLS pixels from the evaluation domain; human visual review remains pending"
+        ),
     }
     output = args.inference_dir / f"tls_retrieval_report_{stamp}.json"
     output.write_text(json.dumps(report, indent=2), encoding="utf-8")
